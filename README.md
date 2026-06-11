@@ -1,73 +1,52 @@
-# React + TypeScript + Vite
+# Orrery — real-time 3D solar system
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A real-time, physically-based 3D simulation of the solar system: planets, moons,
+rings, the asteroid belt, and active comets with distance-scaled tails, rendered
+with React Three Fiber and driven by real ephemeris (`astronomy-engine` + Kepler
+propagation).
 
-Currently, two official plugins are available:
+## Getting started
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```bash
+# 1. Install dependencies
+npm install
 
-## React Compiler
+# 2. Fetch textures (REQUIRED — see note below)
+node scripts/fetch-assets.mjs
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# 3. Start the dev server
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Then open the URL Vite prints (default <http://localhost:5173/>).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+> **⚠️ Don't skip step 2.** The planet/star textures live in `public/textures/`,
+> which is **git-ignored and not committed** (they're ~22 MB and treated as a
+> fetchable dependency, like `node_modules/`). A fresh clone won't have them, and
+> **without the textures the app renders a blank page** — the texture loader
+> throws and the 3D canvas fails to mount.
+>
+> `fetch-assets.mjs` is idempotent: it skips files already present, so you only
+> pay the download once per machine and it's safe to re-run anytime. Source URLs
+> and licenses are listed in [ASSETS.md](ASSETS.md).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Start the Vite dev server with HMR |
+| `npm run build` | Type-check (`tsc -b`) and produce a production build |
+| `npm run preview` | Serve the production build locally |
+| `npm test` | Run the Vitest unit tests |
+| `npm run lint` | Run ESLint |
+| `npm run format` | Format `src/` with Prettier |
+
+## Notes
+
+- Comet tails are modeled to scale with distance from the Sun: a comet is
+  invisible/dormant beyond ~4.6 au and dramatic near perihelion. If a comet
+  looks "tailless," scrub the timeline toward its perihelion to see the full
+  effect — this is physics, not a bug.
+- Built with Vite + React 19 + TypeScript, `@react-three/fiber` / `drei` /
+  `postprocessing`, `three`, `zustand`, and `astronomy-engine`. GLSL shaders
+  live in `src/shaders/` (loaded via `vite-plugin-glsl`).
