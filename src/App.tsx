@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber'
 
 import { Effects } from './scene/Effects'
 import { SystemScene } from './scene/SystemScene'
+import { EventsPanel } from './ui/EventsPanel'
 import { InfoPanel } from './ui/InfoPanel'
 import { TimeHud } from './ui/TimeHud'
 
@@ -20,6 +21,7 @@ export default function App() {
       </Canvas>
       <TimeHud />
       <InfoPanel />
+      <EventsPanel />
     </div>
   )
 }

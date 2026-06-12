@@ -234,6 +234,7 @@ export const BODY_FACTS: Record<BodyId, BodyFacts> = {
       'Neptune was discovered by mathematics: its position was predicted from Uranus’ orbit before it was seen (1846).',
       'It has the fastest winds in the solar system — up to 2,100 km/h.',
       'Since its discovery it has completed just one full orbit (in 2011).',
+      'It has five faint rings named after astronomers; the outer Adams ring carries bright clumpy arcs that should have spread out long ago.',
     ],
   },
   io: {

@@ -10,6 +10,8 @@ import {
   type ShaderMaterial,
 } from 'three'
 
+import { useSelectionStore } from '../../state/selectionStore'
+import { kmToSceneUnits, toSceneRelative } from '../../utils/frame'
 import atmosphereFrag from '../../shaders/atmosphere.frag'
 import bodyVert from '../../shaders/body.vert'
 import cloudsFrag from '../../shaders/clouds.frag'
@@ -47,6 +49,11 @@ export function Earth() {
       uCloudShift: { value: 0 },
       uPoleW: { value: new Vector3(0, 1, 0) },
       uAmbient: { value: 0.006 },
+      // The Moon's eclipse shadow (umbra spot + penumbra).
+      uOccOn: { value: 1 },
+      uOccPos: { value: new Vector3() },
+      uOccRadius: { value: 1 },
+      uSunRadiusW: { value: 1 },
     }),
     [dayMap, nightMap, cloudMap],
   )
@@ -94,6 +101,12 @@ export function Earth() {
 
     const pole = frame.axes.earth.zAxis
     ;(su.uPoleW.value as Vector3).set(pole.x, pole.z, -pole.y).normalize()
+
+    // Moon occluder for the solar-eclipse umbra spot.
+    const { originBody } = useSelectionStore.getState()
+    toSceneRelative(frame.view.moon.pos, frame.view[originBody].pos, su.uOccPos.value as Vector3)
+    su.uOccRadius.value = kmToSceneUnits(frame.view.moon.radiusKm)
+    su.uSunRadiusW.value = kmToSceneUnits(frame.view.sun.radiusKm)
   })
 
   return (

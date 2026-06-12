@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent } from 'react'
+import { useRef, type PointerEvent, type ReactNode } from 'react'
 
 import { useSelectionStore } from '../state/selectionStore'
 import { useSettingsStore } from '../state/settingsStore'
@@ -8,6 +8,38 @@ import type { ScaleMode } from '../utils/scale'
 
 /** Days of sim time represented by one full timeline width. */
 const TIMELINE_RANGE_DAYS = 365
+
+function IconPlay() {
+  return (
+    <svg width="11" height="12" viewBox="0 0 11 12" aria-hidden="true">
+      <path d="M1 1l9 5-9 5z" fill="currentColor" />
+    </svg>
+  )
+}
+
+function IconPause() {
+  return (
+    <svg width="11" height="12" viewBox="0 0 11 12" aria-hidden="true">
+      <rect x="1" y="1" width="3.2" height="10" fill="currentColor" />
+      <rect x="6.8" y="1" width="3.2" height="10" fill="currentColor" />
+    </svg>
+  )
+}
+
+function IconDirection({ reversed }: { reversed: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="12"
+      viewBox="0 0 14 12"
+      aria-hidden="true"
+      style={{ transform: reversed ? 'scaleX(-1)' : undefined }}
+    >
+      <path d="M1 1l6 5-6 5z" fill="currentColor" />
+      <path d="M7 1l6 5-6 5z" fill="currentColor" />
+    </svg>
+  )
+}
 
 /**
  * Draggable timeline strip: horizontal drag scrubs simulation time live.
@@ -44,28 +76,39 @@ function Timeline() {
     if (drag.current.wasPlaying) useTimeStore.getState().setPlaying(true)
   }
 
-  // 12 month ticks across the strip; the centre marker is "now".
-  const ticks = Array.from({ length: 13 }, (_, i) => (i / 12) * 100)
+  // Month ticks; quarters are taller.
+  const ticks = Array.from({ length: 13 }, (_, i) => ({
+    left: (i / 12) * 100,
+    major: i % 3 === 0,
+  }))
 
   return (
     <div
       ref={ref}
       className="timeline"
       role="slider"
-      aria-label="Drag horizontally to scrub simulation time"
+      aria-label="Drag horizontally to scrub simulation time, one year across"
       tabIndex={0}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
     >
-      {ticks.map((left) => (
-        <span key={left} className="timeline-tick" style={{ left: `${left}%` }} />
+      {ticks.map(({ left, major }) => (
+        <span
+          key={left}
+          className={`timeline-tick${major ? ' timeline-tick-major' : ''}`}
+          style={{ left: `${left}%` }}
+        />
       ))}
       <span className="timeline-cursor" />
-      <span className="timeline-hint">drag to scrub · 1 year across</span>
+      <span className="timeline-hint">drag to scrub · 1 year</span>
     </div>
   )
+}
+
+function Group({ children }: { children: ReactNode }) {
+  return <div className="hud-group">{children}</div>
 }
 
 export function TimeHud() {
@@ -78,7 +121,10 @@ export function TimeHud() {
   const scaleMode = useSettingsStore((s) => s.scaleMode)
   const showOrbits = useSettingsStore((s) => s.showOrbits)
   const showLabels = useSettingsStore((s) => s.showLabels)
-  const { setScaleMode, setShowOrbits, setShowLabels } = useSettingsStore.getState()
+  const showShadowCones = useSettingsStore((s) => s.showShadowCones)
+  const eventsPanelOpen = useSettingsStore((s) => s.eventsPanelOpen)
+  const { setScaleMode, setShowOrbits, setShowLabels, setShowShadowCones, setEventsPanelOpen } =
+    useSettingsStore.getState()
 
   const frameSystem = useSelectionStore((s) => s.frameSystem)
 
@@ -86,62 +132,94 @@ export function TimeHud() {
 
   return (
     <div className="hud">
-      <div className="hud-row">
+      <div className="hud-clock">
         <span className="hud-date">{formatJdDate(jd)}</span>
         <span className="hud-time">{formatJdTime(jd)}</span>
       </div>
+
       <Timeline />
-      <div className="hud-row">
-        <button
-          className="hud-btn"
-          onClick={() => setDirection(direction === 1 ? -1 : 1)}
-          title="Reverse time direction"
-        >
-          {direction === 1 ? '▶▶' : '◀◀'}
-        </button>
-        <button className="hud-btn" onClick={() => stepSpeed(-1)} title="Slower">
-          −
-        </button>
-        <button className="hud-btn hud-play" onClick={togglePlay}>
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <button className="hud-btn" onClick={() => stepSpeed(1)} title="Faster">
-          +
-        </button>
-        <span className="hud-speed">{formatSpeed(speed)}</span>
-        <button className="hud-btn" onClick={setNow}>
-          Now
-        </button>
-      </div>
-      <div className="hud-row">
-        <button className="hud-btn" onClick={frameSystem}>
-          System view
-        </button>
-        <select
-          className="hud-select"
-          value={scaleMode}
-          onChange={(e) => setScaleMode(e.target.value as ScaleMode)}
-          title="Scale mode (readouts always show true values)"
-        >
-          <option value="visible">Visible scale</option>
-          <option value="realistic">Realistic scale</option>
-        </select>
-        <label className="hud-check">
-          <input
-            type="checkbox"
-            checked={showOrbits}
-            onChange={(e) => setShowOrbits(e.target.checked)}
-          />
-          Orbits
-        </label>
-        <label className="hud-check">
-          <input
-            type="checkbox"
-            checked={showLabels}
-            onChange={(e) => setShowLabels(e.target.checked)}
-          />
-          Labels
-        </label>
+
+      <div className="hud-controls">
+        <Group>
+          <button
+            className={`hud-icon-btn${direction === -1 ? ' is-on' : ''}`}
+            onClick={() => setDirection(direction === 1 ? -1 : 1)}
+            title={direction === 1 ? 'Time runs forward — click to reverse' : 'Time runs backward — click to reverse'}
+            aria-label="Reverse time direction"
+          >
+            <IconDirection reversed={direction === -1} />
+          </button>
+          <button className="hud-icon-btn" onClick={() => stepSpeed(-1)} aria-label="Slower" title="Slower">
+            −
+          </button>
+          <button
+            className="hud-icon-btn hud-play"
+            onClick={togglePlay}
+            aria-label={playing ? 'Pause' : 'Play'}
+            title={playing ? 'Pause' : 'Play'}
+          >
+            {playing ? <IconPause /> : <IconPlay />}
+          </button>
+          <button className="hud-icon-btn" onClick={() => stepSpeed(1)} aria-label="Faster" title="Faster">
+            +
+          </button>
+          <span className="hud-speed">{formatSpeed(speed)}</span>
+        </Group>
+
+        <span className="hud-divider" />
+
+        <Group>
+          <button className="hud-btn" onClick={setNow} title="Return to the present">
+            Now
+          </button>
+          <button
+            className={`hud-btn${eventsPanelOpen ? ' hud-btn-active' : ''}`}
+            onClick={() => setEventsPanelOpen(!eventsPanelOpen)}
+            title="Eclipses, meteor showers and comets"
+          >
+            Events
+          </button>
+          <button className="hud-btn" onClick={frameSystem} title="Zoom out to the whole system">
+            Overview
+          </button>
+        </Group>
+
+        <span className="hud-divider" />
+
+        <Group>
+          <select
+            className="hud-select"
+            value={scaleMode}
+            onChange={(e) => setScaleMode(e.target.value as ScaleMode)}
+            title="Scale mode — readouts always show true values"
+            aria-label="Scale mode"
+          >
+            <option value="visible">Visible scale</option>
+            <option value="realistic">Realistic scale</option>
+          </select>
+          <button
+            className={`hud-pill${showOrbits ? ' is-on' : ''}`}
+            onClick={() => setShowOrbits(!showOrbits)}
+            aria-pressed={showOrbits}
+          >
+            Orbits
+          </button>
+          <button
+            className={`hud-pill${showLabels ? ' is-on' : ''}`}
+            onClick={() => setShowLabels(!showLabels)}
+            aria-pressed={showLabels}
+          >
+            Labels
+          </button>
+          <button
+            className={`hud-pill${showShadowCones ? ' is-on' : ''}`}
+            onClick={() => setShowShadowCones(!showShadowCones)}
+            aria-pressed={showShadowCones}
+            title="Umbra and penumbra cones near eclipses"
+          >
+            Shadows
+          </button>
+        </Group>
       </div>
     </div>
   )

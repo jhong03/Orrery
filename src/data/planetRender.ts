@@ -95,3 +95,11 @@ export const SATURN_RING_OUTER_KM = 140_220
 /** Uranus' faint ring system (epsilon ring dominates), km. */
 export const URANUS_RING_INNER_KM = 41_837
 export const URANUS_RING_OUTER_KM = 51_149
+
+/** Jupiter's tenuous dust rings: halo + main ring + gossamer rings, km. */
+export const JUPITER_RING_INNER_KM = 92_000
+export const JUPITER_RING_OUTER_KM = 181_350
+
+/** Neptune's rings: Galle through Adams (the one with the arcs), km. */
+export const NEPTUNE_RING_INNER_KM = 41_900
+export const NEPTUNE_RING_OUTER_KM = 62_930

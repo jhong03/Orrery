@@ -35,12 +35,14 @@ export interface PlanetProps {
   id: TexturedPlanetId
   /** When set, the planet receives this ring system's shadow analytically. */
   ringShadow?: RingShadowConfig
+  /** Body whose disc can occlude the Sun (eclipse shadows), e.g. Earth for the Moon. */
+  eclipseOccluder?: BodyId
   declutterAgainst?: BodyId
   /** Extra scene content inside the anchor (e.g. ring meshes). */
   children?: ReactNode
 }
 
-export function Planet({ id, ringShadow, declutterAgainst, children }: PlanetProps) {
+export function Planet({ id, ringShadow, eclipseOccluder, declutterAgainst, children }: PlanetProps) {
   const cfg = PLANET_RENDER[id]
   const map = useTexture(cfg.texture, (t) => {
     t.colorSpace = SRGBColorSpace
@@ -62,8 +64,12 @@ export function Planet({ id, ringShadow, declutterAgainst, children }: PlanetPro
       uRingNormal: { value: new Vector3(0, 1, 0) },
       uRingInner: { value: 0 },
       uRingOuter: { value: 1 },
+      uOccOn: { value: eclipseOccluder ? 1 : 0 },
+      uOccPos: { value: new Vector3() },
+      uOccRadius: { value: 1 },
+      uSunRadiusW: { value: 1 },
     }),
-    [map, cfg, ringShadow],
+    [map, cfg, ringShadow, eclipseOccluder],
   )
 
   // Per-frame updates go through the material ref: R3F clones the uniform
@@ -76,6 +82,16 @@ export function Planet({ id, ringShadow, declutterAgainst, children }: PlanetPro
     if (!u) return
     updateSunPosition(u.uSunPos.value as Vector3)
     updateSunColor(id, u.uSunColor.value as Color)
+    if (eclipseOccluder) {
+      const { originBody } = useSelectionStore.getState()
+      toSceneRelative(
+        frame.view[eclipseOccluder].pos,
+        frame.view[originBody].pos,
+        u.uOccPos.value as Vector3,
+      )
+      u.uOccRadius.value = kmToSceneUnits(frame.view[eclipseOccluder].radiusKm)
+      u.uSunRadiusW.value = kmToSceneUnits(frame.view.sun.radiusKm)
+    }
     if (ringShadow) {
       // World-space ring plane, straight from the per-frame view state.
       const { originBody } = useSelectionStore.getState()

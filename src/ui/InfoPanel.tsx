@@ -4,9 +4,16 @@ import { BODY_CONSTANTS } from '../data/bodies'
 import { BODY_FACTS } from '../data/facts'
 import { SMALL_BODIES, elementsAt } from '../data/smallBodies'
 import { computeSystemState } from '../ephemeris/ephemeris'
+import { nextPlanetApsides, type PlanetApsides } from '../ephemeris/events'
 import { nextPerihelionJd } from '../ephemeris/kepler'
-import { createSystemState, vecDistance, vecLength, SMALL_BODY_IDS } from '../ephemeris/types'
-import type { BodyId, SmallBodyId } from '../ephemeris/types'
+import {
+  createSystemState,
+  vecDistance,
+  vecLength,
+  PLANET_IDS,
+  SMALL_BODY_IDS,
+} from '../ephemeris/types'
+import type { BodyId, PlanetId, SmallBodyId } from '../ephemeris/types'
 import { useSelectionStore } from '../state/selectionStore'
 import { useTimeStore } from '../state/timeStore'
 import {
@@ -21,10 +28,25 @@ interface LiveValues {
   earthKm: number
   speedKmS: number
   nextPerihelionJd: number | null
+  apsides: PlanetApsides | null
 }
 
 const scratchA = createSystemState()
 const scratchB = createSystemState()
+
+// SearchPlanetApsis is too costly for the 2 Hz tick; cache per body+day.
+const apsidesCache = new Map<string, PlanetApsides>()
+
+function planetApsidesCached(id: PlanetId, jd: number): PlanetApsides {
+  const key = `${id}:${Math.floor(jd)}`
+  let v = apsidesCache.get(key)
+  if (!v) {
+    v = nextPlanetApsides(id, jd)
+    apsidesCache.clear() // tiny cache: one entry is all we need
+    apsidesCache.set(key, v)
+  }
+  return v
+}
 
 function computeLive(id: BodyId, jd: number): LiveValues {
   const dt = 0.005 // days, for the speed finite difference
@@ -39,7 +61,10 @@ function computeLive(id: BodyId, jd: number): LiveValues {
     const el = elementsAt(SMALL_BODIES[id as SmallBodyId], jd)
     peri = nextPerihelionJd(el, jd)
   }
-  return { sunKm, earthKm, speedKmS, nextPerihelionJd: peri }
+  const apsides = (PLANET_IDS as readonly string[]).includes(id)
+    ? planetApsidesCached(id as PlanetId, jd)
+    : null
+  return { sunKm, earthKm, speedKmS, nextPerihelionJd: peri, apsides }
 }
 
 /**
@@ -104,6 +129,18 @@ function InfoPanelContent({ id, onClose }: { id: BodyId; onClose: () => void }) 
         {id !== 'sun' && <Row label="Orbital speed" value={formatSpeedKmS(live.speedKmS)} />}
         {live.nextPerihelionJd !== null && (
           <Row label="Next perihelion" value={formatJdDate(live.nextPerihelionJd)} />
+        )}
+        {live.apsides && (
+          <>
+            <Row
+              label="Next perihelion"
+              value={`${formatJdDate(live.apsides.nextPerihelionJd)} · ${live.apsides.nextPerihelionAu.toFixed(3)} au`}
+            />
+            <Row
+              label="Next aphelion"
+              value={`${formatJdDate(live.apsides.nextAphelionJd)} · ${live.apsides.nextAphelionAu.toFixed(3)} au`}
+            />
+          </>
         )}
       </section>
 

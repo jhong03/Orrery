@@ -13,13 +13,16 @@ import { kmToSceneUnits, toSceneRelative } from '../utils/frame'
 import { AsteroidBelt } from './AsteroidBelt'
 import { Comet } from './bodies/Comet'
 import { Earth } from './bodies/Earth'
+import { Jupiter } from './bodies/Jupiter'
 import { MinorBody } from './bodies/MinorBody'
+import { Neptune } from './bodies/Neptune'
 import { Planet } from './bodies/Planet'
 import { Saturn } from './bodies/Saturn'
 import { Sun } from './bodies/Sun'
 import { Uranus } from './bodies/Uranus'
 import { frame, updateFrame } from './frameState'
 import { OrbitLines } from './OrbitLines'
+import { ShadowCones } from './ShadowCones'
 import { Starfield } from './Starfield'
 
 /** Dev-only: exposes the three.js scene/gl for the headless debug scripts. */
@@ -201,12 +204,12 @@ export function SystemScene() {
         <Planet id="mercury" />
         <Planet id="venus" />
         <Earth />
-        <Planet id="moon" declutterAgainst="earth" />
+        <Planet id="moon" declutterAgainst="earth" eclipseOccluder="earth" />
         <Planet id="mars" />
-        <Planet id="jupiter" />
+        <Jupiter />
         <Saturn />
         <Uranus />
-        <Planet id="neptune" />
+        <Neptune />
         {/* Galilean moons + Titan */}
         <MinorBody id="io" declutterAgainst="jupiter" declutterPx={44} />
         <MinorBody id="europa" declutterAgainst="jupiter" declutterPx={44} />
@@ -222,6 +225,7 @@ export function SystemScene() {
         <Comet id="cg67p" />
         <Comet id="neowise" />
         <AsteroidBelt />
+        <ShadowCones />
       </Suspense>
       <OrbitLines />
       <OrbitControls makeDefault enableDamping dampingFactor={0.08} />

@@ -63,6 +63,10 @@ export function MinorBody({ id, declutterAgainst, declutterPx }: MinorBodyProps)
       uRingNormal: { value: new Vector3(0, 1, 0) },
       uRingInner: { value: 0 },
       uRingOuter: { value: 1 },
+      uOccOn: { value: 0 },
+      uOccPos: { value: new Vector3() },
+      uOccRadius: { value: 1 },
+      uSunRadiusW: { value: 1 },
     }),
     [id],
   )

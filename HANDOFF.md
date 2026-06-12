@@ -9,11 +9,65 @@ The repo is **green**: `npx tsc -b`, `npm run lint`, `npm test` (43 tests),
 `npm run build` all pass; `npm run dev` serves the app at localhost:5173.
 170 fps idle/scrub at last measure.
 
-**Resume point: start M4** (see "Next: M4" below). M0–M3 are done and
-verified, plus the user-requested facts/comet interlude. The user confirmed
-the comet behavior (only Encke shows a tail at the June 2026 sim date) and
-accepted it as correct — comets ignite within ~4.6 au; jump dates: Encke
-2027-02, 67P 2028-07, NEOWISE 2020-07 (backwards), Halley 2061-07-28.
+**Resume point: continue M5** (remaining: cmd-K fuzzy search, settings/
+quality presets Low-Ultra, onboarding coach marks, mobile gestures,
+full a11y pass). M0–M4 are done and verified; the HUD redesign below is
+the first slice of M5.
+
+## Interlude (user-requested, 2026-06-12): giant-planet rings + HUD redesign
+- **All four giant planets now have rings.** Jupiter (halo + main +
+  gossamer, near edge-on at its 3 deg tilt) and Neptune (Galle/Le Verrier/
+  Lassell/Arago/Adams) added via the shared procedural strip generator
+  scene/bodies/ringTexture.ts (Uranus refactored onto it; Saturn keeps the
+  photo strip). Components: bodies/Jupiter.tsx, bodies/Neptune.tsx wrap
+  Planet with Rings children; radii constants in data/planetRender.ts.
+  Band opacities are deliberately ~5-8x physical (real optical depth 1e-6
+  is invisible) — user asked for MORE visibility twice; current values are
+  user-approved. Neptune facts gained an Adams-arcs did-you-know.
+- **HUD redesigned** (instrument-bar style, user-approved): clock header
+  (date prominent + UTC dim), full-width timeline with quarter-major ticks
+  and amber cursor, control row with hairline-divided groups — transport
+  (icon direction/play/pause buttons, -/+ steppers, mono speed readout),
+  jump (Now / Events / Overview — renamed from "System view"), view (scale
+  select + amber pill toggles for Orbits/Labels/Shadows replacing
+  checkboxes). aria-pressed/labels + focus rings in place (M5 a11y seed).
+  Side panels now stop 124px above the bottom so they never cover the HUD
+  (they previously overlapped its left edge).
+- Note: there is NO "ui ux pro" skill in this environment — the redesign
+  followed the spec's design direction directly.
+
+- **M4 — Events: DONE, verified (50 tests, 170 fps).**
+  - src/ephemeris/events.ts: merged solar+lunar eclipse timeline
+    (nextEclipses), nextPlanetApsides via SearchPlanetApsis (cached per
+    body+day in InfoPanel). Tests pin 2026-08-12 total solar (lat 65N) and
+    2026-03-03 total lunar.
+  - src/data/meteorShowers.ts: 8 major showers, wrap-aware activity windows;
+    Halley parents Eta Aquariids + Orionids ("View parent" focuses it).
+  - src/utils/regions.ts: coarse region names for greatest-eclipse lat/lon
+    (2026-08-12 -> "Iceland and the North Atlantic").
+  - Eclipse shadows are ANALYTIC IN THE SHADERS (sunOcclusion(): angular
+    sun-disc coverage with annular cap): earth.frag darkens through
+    penumbra->umbra (THE umbra spot crawls across Earth at 10 min/s — both
+    scale modes, since exaggerations are roughly proportionate);
+    planet.frag tints the Moon copper through Earth's shadow (blood moon
+    verified 2026-03-03). Planet has eclipseOccluder prop (moon uses earth).
+  - scene/ShadowCones.tsx: umbra/penumbra cones parametrized by span
+    fraction (preserves total-vs-annular in both scale modes), fade in near
+    syzygy (smooth 0.9975..0.99995 alignment), "Shadows" HUD toggle.
+  - ui/EventsPanel.tsx: left panel, tabs Eclipses/Showers/Comets; jump-to
+    sets peak time, focuses earth/moon (sunlit arrival = presenting angle),
+    plays at 10 min/s (speedIndex 2). Comet rows: live r, incoming/outgoing,
+    next perihelion, jump (tp-20d at 1 day/s).
+  - **UI z-index lesson: scene labels are drei Html (z up to 10) and STEAL
+    CLICKS from panels — all panels/HUD have z-index 100 now.**
+  - Verification shots: scripts/tour/m4-*.png (umbra spot at two times,
+    blood moon, panel tabs); scripts/dev-m4-tour.mjs is the harness (note:
+    eclipse list recomputes from sim date — rewind before clicking past
+    events).
+
+Previous context: the user confirmed comet behavior (only Encke shows a
+tail at the June 2026 sim date) — comets ignite within ~4.6 au; jump dates:
+Encke 2027-02, 67P 2028-07, NEOWISE 2020-07 (backwards), Halley 2061-07-28.
 
 ## Where we are
 
@@ -164,10 +218,7 @@ Building milestone-by-milestone per the original spec (M0–M6).
   orbital speed via finite difference, next perihelion for small bodies).
   Tests guard completeness (data/facts.test.ts). 43 tests total.
 
-## Next: M4
-- **M4**: eclipse list UI + jump-to + umbra/penumbra shadow cones (the
-  signature moment: umbra spot crossing Earth on 2026-08-12), meteor showers,
-  comet status, apsis events (SearchPlanetApsis).
+## Next: M5
 - **M5**: full UI polish per design direction, search (cmd-K), settings/
   quality presets, onboarding, mobile gestures, a11y.
 - **M6**: perf budget, KTX2 + progressive textures (8K variants already in
