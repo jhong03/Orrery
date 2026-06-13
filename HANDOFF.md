@@ -46,12 +46,25 @@ were committed 2026-06-13 (see git log).
   Verified by scripts/dev-progressive-check.mjs (Earth day map 2048→8192,
   never blank mid-swap, zero errors) + dev-quality-check still green.
 
+- **Showcase README + screenshots**: README.md rewritten (hero + 2x2 shots,
+  features, controls, architecture, deploy, credits). docs/screenshots/*.png
+  committed, captured by scripts/capture-readme-shots.mjs.
+- **GitHub Pages deploy**: .github/workflows/deploy.yml (push to main →
+  fetch-assets [cached] → build with GITHUB_PAGES=true → publish). vite.config
+  `base` = '/Orrery/' for the Pages build, '/' otherwise. utils/asset.ts
+  prefixes runtime public-asset paths with import.meta.env.BASE_URL (Vite does
+  NOT rewrite plain runtime '/textures/...' strings, so they'd 404 under
+  /Orrery/) — every texture load routes through asset(). Verified: Pages build
+  served via preview at /Orrery/ loads with canvas + all textures 200, zero
+  errors. ONE-TIME MANUAL STEP (repo owner): Settings → Pages → Source = GitHub
+  Actions, or the deploy job fails. Live URL: https://jhong03.github.io/Orrery/.
+
 Remaining M6: KTX2/Basis textures (NOT done — needs an encoder toolchain
 [basisu/toktx] to produce .ktx2 + the basis_transcoder wasm in public/ and
 drei's KTX2Loader; the encoder binary isn't available in this dev env, and
 textures are fetched separately/gitignored, so it must be a fetch-step add-on.
-Progressive loading above already covers the perceived-load win without it).
-Perf pass vs budget, README screenshots, deploy preview. Optional polish:
+Progressive loading already covers the perceived-load win without it). Perf
+pass vs budget (currently vsync-capped, headroom unmeasured). Optional polish:
 terrain horizon skirts, surface loading progress hint, WebGL context-loss
 recovery. M0–M5 plus the Surface (ground-view) feature are all done & verified.
 
