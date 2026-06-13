@@ -916,6 +916,19 @@ body,
   pointer-events: none;
 }
 
+.surface-loading {
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(10, 13, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(215, 218, 227, 0.7);
+  white-space: nowrap;
+  user-select: none;
+  pointer-events: none;
+}
+
 @media (max-width: 720px) {
   .surface-hint {
     display: none;

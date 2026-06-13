@@ -2,7 +2,13 @@
  * Web-mercator (slippy) tile math for the surface-mode ground imagery.
  * Tiles are placed on a local flat patch: ENU kilometer offsets from the
  * observer via an equirectangular approximation — fine at patch scale.
+ *
+ * Imagery zoom is decoupled from elevation zoom: the foreground requests very
+ * sharp imagery (z17, ~1 m/px) while elevation comes from the coarser DEM the
+ * provider tops out at (z15). Each imagery tile therefore covers only a
+ * sub-rectangle of its elevation tile; `tileGrid` precomputes that mapping.
  */
+import { TERRAIN_URL } from './terrain'
 
 /** Esri World Imagery — keyless, CORS-enabled. Attribution is required. */
 export const TILE_URL = (z: number, y: number, x: number) =>
@@ -22,10 +28,13 @@ export interface TileSpec {
   wKm: number
   hKm: number
   key: string
-  /** Slippy tile address, for fetching the matching elevation tile. */
-  z: number
-  tx: number
-  ty: number
+  /** Elevation tile + the [demSx, demSx+demScale]×[demSy, demSy+demScale]
+   *  sub-rectangle (fractions from the DEM tile's west/north corner) that this
+   *  imagery tile occupies. demScale === 1 when imagery and DEM zoom match. */
+  demUrl: string
+  demSx: number
+  demSy: number
+  demScale: number
 }
 
 function lonToX(lonDeg: number, z: number): number {
@@ -47,14 +56,22 @@ function yToLat(y: number, z: number): number {
 }
 
 /**
- * An n x n grid of tiles at zoom z centered on the observer.
- * Each tile is sized/positioned from its own mercator bounds.
+ * An n x n grid of imagery tiles at zoom `imgZ` centered on the observer, each
+ * carrying the elevation tile (at zoom `demZ` ≤ `imgZ`) and sub-rect it samples.
  */
-export function tileGrid(latDeg: number, lonDeg: number, z: number, n: number): TileSpec[] {
-  const cx = Math.floor(lonToX(lonDeg, z))
-  const cy = Math.floor(latToY(latDeg, z))
+export function tileGrid(
+  latDeg: number,
+  lonDeg: number,
+  imgZ: number,
+  demZ: number,
+  n: number,
+): TileSpec[] {
+  const cx = Math.floor(lonToX(lonDeg, imgZ))
+  const cy = Math.floor(latToY(latDeg, imgZ))
   const half = Math.floor(n / 2)
-  const max = 2 ** z
+  const max = 2 ** imgZ
+  const maxDem = 2 ** demZ
+  const f = 2 ** (imgZ - demZ) // imagery tiles per DEM tile, per axis
   const kmPerDegLon = KM_PER_DEG_LON_EQ * Math.cos((latDeg * Math.PI) / 180)
 
   const out: TileSpec[] = []
@@ -63,22 +80,26 @@ export function tileGrid(latDeg: number, lonDeg: number, z: number, n: number): 
     if (ty < 0 || ty >= max) continue // beyond the poles
     for (let dx = -half; dx <= half; dx++) {
       const tx = (((cx + dx) % max) + max) % max // wrap the antimeridian
-      const w = xToLon(cx + dx, z)
-      const e = xToLon(cx + dx + 1, z)
-      const nLat = yToLat(ty, z)
-      const sLat = yToLat(ty + 1, z)
+      const w = xToLon(cx + dx, imgZ)
+      const e = xToLon(cx + dx + 1, imgZ)
+      const nLat = yToLat(ty, imgZ)
+      const sLat = yToLat(ty + 1, imgZ)
       const midLon = (w + e) / 2
       const midLat = (nLat + sLat) / 2
+      // Which DEM tile holds this imagery tile, and where within it.
+      const demTx = (((Math.floor(tx / f) % maxDem) + maxDem) % maxDem)
+      const demTy = Math.floor(ty / f)
       out.push({
-        url: TILE_URL(z, ty, tx),
-        key: `${z}/${ty}/${tx}`,
+        url: TILE_URL(imgZ, ty, tx),
+        key: `${imgZ}/${ty}/${tx}`,
         eKm: (midLon - lonDeg) * kmPerDegLon,
         nKm: (midLat - latDeg) * KM_PER_DEG_LAT,
         wKm: (e - w) * kmPerDegLon,
         hKm: (nLat - sLat) * KM_PER_DEG_LAT,
-        z,
-        tx,
-        ty,
+        demUrl: TERRAIN_URL(demZ, demTy, demTx),
+        demSx: (tx - Math.floor(tx / f) * f) / f,
+        demSy: (ty - demTy * f) / f,
+        demScale: 1 / f,
       })
     }
   }

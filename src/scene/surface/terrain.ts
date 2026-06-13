@@ -6,7 +6,12 @@
 export const TERRAIN_URL = (z: number, y: number, x: number) =>
   `https://s3.amazonaws.com/elevation-tiles-prod/terrarium/${z}/${x}/${y}.png`
 
-/** Decoded elevation grid: `size`×`size` samples, row 0 = north edge, metres. */
+/**
+ * Decoded elevation grid at the tile's NATIVE resolution (typically 256×256),
+ * row 0 = north edge, metres. Kept full-res so the displacement mesh can
+ * sample it bilinearly at any tessellation — nearest-resampling onto a coarse
+ * grid is what produced the stair-stepped facets.
+ */
 export interface HeightGrid {
   size: number
   data: Float32Array
@@ -14,29 +19,29 @@ export interface HeightGrid {
 
 const cache = new Map<string, Promise<HeightGrid | null>>()
 
-/** Load + decode a Terrarium tile to an N×N height grid. Never rejects. */
-export function loadHeightGrid(url: string, size: number): Promise<HeightGrid | null> {
-  const key = `${size}|${url}`
-  const hit = cache.get(key)
+/** Load + decode a Terrarium tile to its native-resolution height grid.
+ *  Cached per URL; never rejects (missing/tainted tile -> null -> flat). */
+export function loadHeightGrid(url: string): Promise<HeightGrid | null> {
+  const hit = cache.get(url)
   if (hit) return hit
   const p = new Promise<HeightGrid | null>((resolve) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
       try {
+        const w = img.width
+        const h = img.height
         const c = document.createElement('canvas')
-        c.width = img.width
-        c.height = img.height
+        c.width = w
+        c.height = h
         const ctx = c.getContext('2d', { willReadFrequently: true })!
         ctx.drawImage(img, 0, 0)
-        const px = ctx.getImageData(0, 0, img.width, img.height).data
+        const px = ctx.getImageData(0, 0, w, h).data
+        const size = Math.min(w, h)
         const data = new Float32Array(size * size)
-        // Bilinear-free nearest sampling onto the coarser grid is plenty here.
         for (let r = 0; r < size; r++) {
-          const sy = Math.min(img.height - 1, Math.round((r / (size - 1)) * (img.height - 1)))
           for (let col = 0; col < size; col++) {
-            const sx = Math.min(img.width - 1, Math.round((col / (size - 1)) * (img.width - 1)))
-            const i = (sy * img.width + sx) * 4
+            const i = (r * w + col) * 4
             data[r * size + col] = px[i] * 256 + px[i + 1] + px[i + 2] / 256 - 32768
           }
         }
@@ -48,18 +53,33 @@ export function loadHeightGrid(url: string, size: number): Promise<HeightGrid | 
     img.onerror = () => resolve(null)
     img.src = url
   })
-  cache.set(key, p)
+  cache.set(url, p)
   return p
 }
 
 /**
- * Sample a height grid at texture coords (u,v), v=0 at the bottom (WebGL),
- * matching how the imagery texture is mapped onto the plane. Metres.
+ * Bilinearly sample a height grid at texture coords (u,v), v=0 at the bottom
+ * (WebGL), matching how the imagery texture is mapped onto the plane. Smooth
+ * interpolation between samples removes the stair-step facets that nearest
+ * sampling produced. Out-of-range uv clamps to the edge. Metres.
  */
 export function sampleHeight(grid: HeightGrid, u: number, v: number): number {
   const { size, data } = grid
-  const col = Math.min(size - 1, Math.max(0, Math.round(u * (size - 1))))
+  const max = size - 1
   // Texture v=0 is the bottom; grid row 0 is the north (top) edge.
-  const row = Math.min(size - 1, Math.max(0, Math.round((1 - v) * (size - 1))))
-  return data[row * size + col]
+  const fx = Math.min(max, Math.max(0, u * max))
+  const fy = Math.min(max, Math.max(0, (1 - v) * max))
+  const x0 = Math.floor(fx)
+  const y0 = Math.floor(fy)
+  const x1 = Math.min(max, x0 + 1)
+  const y1 = Math.min(max, y0 + 1)
+  const tx = fx - x0
+  const ty = fy - y0
+  const h00 = data[y0 * size + x0]
+  const h10 = data[y0 * size + x1]
+  const h01 = data[y1 * size + x0]
+  const h11 = data[y1 * size + x1]
+  const top = h00 + (h10 - h00) * tx
+  const bot = h01 + (h11 - h01) * tx
+  return top + (bot - top) * ty
 }

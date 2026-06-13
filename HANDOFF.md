@@ -46,14 +46,19 @@ InfoPanel "Stand on the surface" button, a city in Ctrl+K, or Events →
   8–55° tilt, 55° FOV). Camera at origin, near 0.5 m.
 - **GroundTiles.tsx + tiles.ts + terrain.ts** — Esri World Imagery slippy
   tiles draped over REAL 3D elevation: each tile is a subdivided plane
-  (z14 40-seg, z11 28-seg) displaced by the matching AWS Terrarium DEM tile
-  (keyless, CORS; height = R*256+G+B/256−32768 m), 1.5× vertical exaggeration,
-  referenced to the observer's own ground elevation (sampled from the z14 tile
-  under the eye) so their foot sits at −EYE_HEIGHT (40 m). Two LOD rings
-  (z14 5×5 + z11 7×7); brightness tracks Sun altitude and dims in totality;
-  flat fallback if a DEM tile is missing, dark backdrop disc (now at
-  BACKDROP_DEPTH 9 km, below the deepest relief so it never occludes canyon
-  floors) shows if imagery fails. Attribution in the HUD (required).
+  displaced by the AWS Terrarium DEM (keyless, CORS; height =
+  R*256+G+B/256−32768 m), 1.5× vertical exaggeration, referenced to the
+  observer's own ground elevation (sampled under the eye) so their foot sits
+  at −EYE_HEIGHT (40 m). Three LOD rings, **imagery zoom decoupled from DEM
+  zoom** (LAYERS = {imgZ17/demZ15 5×5 seg48, imgZ14/demZ14 5×5 seg44,
+  imgZ11/demZ11 5×5 seg56}): the foreground pulls ~1 m/px z17 imagery over the
+  z15 DEM (the finest the provider serves), mapped through the sub-rectangle
+  each sharp tile occupies in its coarser elevation tile (tiles.ts emits
+  demUrl/demSx/demSy/demScale; demScale=1 collapses to identity at matched
+  zoom). brightness tracks Sun altitude and dims in totality; flat fallback if
+  a DEM tile is missing, dark backdrop disc (BACKDROP_DEPTH 9 km, below the
+  deepest relief so it never occludes canyon floors) shows if imagery fails.
+  Attribution in the HUD (required).
   cities curated toward scenic viewpoints (Grand Canyon, Mt Fuji, Matterhorn,
   Everest BC, Table Mountain, Mauna Kea, …) so the relief reads.
   NOTE: terrain only — no 3D buildings (would need paid 3D-tile services).
@@ -89,21 +94,43 @@ InfoPanel "Stand on the surface" button, a city in Ctrl+K, or Events →
   aurora cylinder arc centres on +Z, so Y-rotation = π − bearing.
 - **Verify scripts** (all exit 0, zero console errors): dev-surface-check,
   dev-ground-check, dev-sky-check, dev-eclipse-ground-check,
-  dev-meteors-check, dev-aurora-check, dev-terrain-check, dev-integration-check.
+  dev-meteors-check, dev-aurora-check, dev-terrain-check, dev-integration-check,
+  dev-terrain-shot (terrain-quality visual check: stands in daytime Malaysia /
+  Alps / Grand Canyon, pitches the view down to the ground, screenshots).
   Screenshots in scripts/tour/ (eclipse-totality = corona money shot,
   eclipse-bloodmoon, aurora-arctic, sky-noon/sunset/night, terrain-canyon,
-  terrain-fuji, integration-watch).
+  terrain-fuji, terrain-malaysia/alps/grand-canyon, integration-watch).
 - **Follow-up polish (user-requested, 2026-06-13):**
   - Aurora given layered non-repeating motion (fbm curtains).
   - Ground made truly 3D via DEM displacement (above).
-  - **Terrain quality pass**: three LOD rings z15/z14/z11 (DEM tops out at
-    z15 — do NOT request higher or the elevation tiles 404), anisotropy 16,
-    and — the big one — the ground is now **lit** by the real Sun direction
+  - **Terrain quality pass**: ground is **lit** by the real Sun direction
     (custom GROUND_VERT/FRAG in GroundTiles.tsx with world normals + logdepth
     chunks): hill-shading makes slopes catch light/shadow so relief reads as
     real 3D. uSunColor (reddens near horizon, 0 at night, dimmed in totality)
     + sky uAmbient drive day/night/eclipse, replacing the old flat brightness
     scalar. Still vsync-capped fps with 75 tiles.
+  - **Terrain quality REWORK (user said the render was "unacceptable",
+    2026-06-13):** four root-cause fixes, each verified with
+    scripts/dev-terrain-shot.mjs (malaysia/alps/grand-canyon, zero errors):
+    (1) **bilinear elevation** — terrain.ts now decodes each DEM at native
+    256² and `sampleHeight` interpolates bilinearly. The old code
+    nearest-sampled TWICE (decode-time resample + per-vertex round), which
+    quantized relief into flat facets. `loadHeightGrid(url)` lost its `size`
+    arg (always native, cached per URL). (2) **decoupled imagery zoom** — the
+    DEM-cap z15 no longer limits imagery; the foreground ring requests z17
+    Esri (~1 m/px, ~5× sharper) over the z15 DEM via the sub-rect mapping
+    (tiles.ts `tileGrid(lat,lon,imgZ,demZ,n)`). DEM still must NOT exceed z15
+    (404s) — but IMAGERY can. (3) **overscan** — tiles grown OVERSCAN=1.03 so
+    neighbours overlap instead of leaving hairline gaps that showed the dark
+    backdrop as diagonal cracks. (4) **preload/prerender gate** — GroundTiles
+    now preloads ALL imagery + DEM + the observer datum for the location, then
+    mounts the whole ground at once behind a "Loading terrain…" pill
+    (.surface-loading), ending the tile-by-tile pop-in. Each GroundTile is now
+    a pure presentational child (geometry built sync in useMemo from the
+    preloaded grid; disposes geo+material+texture on unmount). Frag also got a
+    slight diffuse wrap (+0.15) so shadowed slopes keep shape. KNOWN minor:
+    distant lit ridges can appear to "float" over a shaded valley at the
+    horizon — real terrain, not a gap; skirts would firm it up if wanted.
   - **Reverse geocoding** (scene/surface/geocode.ts, BigDataCloud client API,
     keyless/CORS/cached/fail-safe): the surface HUD shows the resolved
     "City, Country" (or "Open ocean") + the precise lat/lon coordinate.

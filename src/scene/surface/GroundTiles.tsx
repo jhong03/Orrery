@@ -1,9 +1,11 @@
+import { Html } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   BufferAttribute,
   Color,
   Group,
+  LinearMipmapLinearFilter,
   PlaneGeometry,
   ShaderMaterial,
   SRGBColorSpace,
@@ -51,114 +53,115 @@ varying vec3 vN;
 void main() {
   #include <logdepthbuf_fragment>
   vec3 albedo = texture2D(uMap, vUv).rgb;
-  float ndl = max(dot(normalize(vN), uSunDir), 0.0);
+  vec3 n = normalize(vN);
+  // Wrap the diffuse term slightly so shadowed slopes keep a little shape
+  // instead of crushing to flat ambient — softer, more natural relief.
+  float ndl = clamp((dot(n, uSunDir) + 0.15) / 1.15, 0.0, 1.0);
   gl_FragColor = vec4(albedo * (uAmbient + uSunColor * ndl), 1.0);
 }
 `
 
 /**
- * Three concentric LOD rings, finest underfoot to coarse at the horizon.
- * Each finer ring floats a couple of metres above the coarser one (`yOff`,
- * km) so it draws on top where they overlap without z-fighting. `seg` is the
- * displacement-mesh resolution per tile.
+ * Concentric LOD rings, sharp underfoot to coarse at the horizon. Imagery
+ * zoom (`imgZ`) is decoupled from elevation zoom (`demZ`): the foreground gets
+ * very crisp Esri imagery (z17, ~1 m/px) over the finest DEM the provider
+ * serves (z15), while distant rings drop both. Each finer ring floats a couple
+ * of metres above the coarser one (`yOff`, km) so it wins where they overlap.
+ * `seg` is the displacement-mesh resolution per tile.
  */
-// DEM (AWS Terrarium) tops out at z15, so no imagery ring goes above it.
 const LAYERS = [
-  { z: 15, n: 5, yOff: 0.004, seg: 36 }, // ~6 km, ~2.4 m/px — sharp foreground
-  { z: 14, n: 5, yOff: 0.002, seg: 44 }, // ~12 km, ~5 m/px — near mountains
-  { z: 11, n: 5, yOff: 0, seg: 32 }, // ~98 km — distant ranges + horizon
+  { imgZ: 17, demZ: 15, n: 5, seg: 48, yOff: 0.004 }, // ~1.5 km, ~1 m/px — crisp foreground
+  { imgZ: 14, demZ: 14, n: 5, seg: 44, yOff: 0.002 }, // ~12 km — near/mid mountains
+  { imgZ: 11, demZ: 11, n: 5, seg: 56, yOff: 0 }, // ~98 km — distant ranges + horizon
 ]
 
 /** Vertical exaggeration so terrain reads as 3D from a 40 m eye height. */
 const RELIEF = 1.5
+
+/** Grow each tile mesh past its bounds so neighbours overlap rather than leave
+ *  a hairline gap (which shows the dark backdrop through as a crack). */
+const OVERSCAN = 1.03
 
 /** Max anisotropy on the imagery so grazing-angle terrain stays crisp. */
 const ANISOTROPY = 16
 
 const loader = new TextureLoader()
 
-function GroundTile({
-  spec,
-  yOff,
-  seg,
-  obsElevM,
-}: {
+/** One preloaded ground tile: imagery texture + (optional) elevation grid. */
+interface ReadyTile {
   spec: TileSpec
-  yOff: number
   seg: number
-  obsElevM: number
-}) {
-  const [texture, setTexture] = useState<Texture | null>(null)
-  const [geometry, setGeometry] = useState<PlaneGeometry | null>(null)
+  yOff: number
+  texture: Texture
+  grid: HeightGrid | null
+}
+
+function loadTexture(url: string): Promise<Texture | null> {
+  return new Promise((resolve) => {
+    loader.load(
+      url,
+      (t) => {
+        t.colorSpace = SRGBColorSpace
+        t.anisotropy = ANISOTROPY
+        t.minFilter = LinearMipmapLinearFilter
+        t.generateMipmaps = true
+        resolve(t)
+      },
+      undefined,
+      () => resolve(null),
+    )
+  })
+}
+
+function GroundTile({ spec, seg, yOff, texture, grid, obsElevM }: ReadyTile & { obsElevM: number }) {
   const material = useMemo(
     () =>
       new ShaderMaterial({
         vertexShader: GROUND_VERT,
         fragmentShader: GROUND_FRAG,
         uniforms: {
-          uMap: { value: null },
+          uMap: { value: texture },
           uSunDir: { value: new Vector3(0, 1, 0) },
           uSunColor: { value: new Color(0, 0, 0) },
           uAmbient: { value: new Color(0.05, 0.05, 0.06) },
         },
       }),
-    [],
+    [texture],
   )
-  useEffect(() => () => material.dispose(), [material])
 
-  // Imagery.
-  useEffect(() => {
-    let cancelled = false
-    let tex: Texture | undefined
-    loader.load(
-      spec.url,
-      (t) => {
-        if (cancelled) return void t.dispose()
-        t.colorSpace = SRGBColorSpace
-        t.anisotropy = ANISOTROPY
-        tex = t
-        material.uniforms.uMap.value = t
-        setTexture(t)
-      },
-      undefined,
-      () => {}, // offline: dark backdrop shows through
-    )
-    return () => {
-      cancelled = true
-      tex?.dispose()
-      setTexture(null)
+  // Displaced plane, built once from the preloaded DEM. Overscanned so tiles
+  // overlap; heights sampled bilinearly through the imagery tile's sub-rect of
+  // its (possibly coarser) elevation tile.
+  const geometry = useMemo(() => {
+    const wKm = spec.wKm * OVERSCAN
+    const hKm = spec.hKm * OVERSCAN
+    const geo = new PlaneGeometry(wKm, hKm, seg, seg)
+    if (grid) {
+      const pos = geo.getAttribute('position') as BufferAttribute
+      for (let i = 0; i < pos.count; i++) {
+        const u = pos.getX(i) / wKm + 0.5 // 0..1 across the (overscanned) tile
+        const v = pos.getY(i) / hKm + 0.5
+        // Map into the DEM tile's sub-rect (v=0 bottom). demScale === 1 and
+        // demSx/demSy === 0 collapse this to the identity for matched zoom.
+        const du = spec.demSx + u * spec.demScale
+        const dv = 1 - spec.demSy - (1 - v) * spec.demScale
+        const h = sampleHeight(grid, du, dv)
+        pos.setZ(i, ((h - obsElevM) / 1000) * RELIEF) // metres -> km, exaggerated
+      }
+      pos.needsUpdate = true
+      geo.computeVertexNormals()
     }
-  }, [spec.url, material])
+    return geo
+  }, [grid, seg, spec, obsElevM])
 
-  // Elevation -> displaced plane (flat fallback if the DEM tile is missing).
   useEffect(() => {
-    let cancelled = false
-    const geo = new PlaneGeometry(spec.wKm, spec.hKm, seg, seg)
-    loadHeightGrid(TERRAIN_URL(spec.z, spec.ty, spec.tx), seg + 1).then(
-      (grid: HeightGrid | null) => {
-        if (cancelled) return
-        if (grid) {
-          const pos = geo.getAttribute('position') as BufferAttribute
-          for (let i = 0; i < pos.count; i++) {
-            const u = pos.getX(i) / spec.wKm + 0.5
-            const v = pos.getY(i) / spec.hKm + 0.5
-            const h = sampleHeight(grid, u, v)
-            pos.setZ(i, ((h - obsElevM) / 1000) * RELIEF) // metres -> km, exaggerated
-          }
-          pos.needsUpdate = true
-          geo.computeVertexNormals()
-        }
-        setGeometry(geo)
-      },
-    )
     return () => {
-      cancelled = true
-      geo.dispose()
-      setGeometry(null)
+      geometry.dispose()
+      material.dispose()
+      texture.dispose()
     }
-  }, [spec.z, spec.tx, spec.ty, spec.wKm, spec.hKm, seg, obsElevM])
+  }, [geometry, material, texture])
 
-  if (!texture || !geometry) return null
   return (
     <mesh
       geometry={geometry}
@@ -170,10 +173,17 @@ function GroundTile({
   )
 }
 
+interface Bundle {
+  obsElevM: number
+  tiles: ReadyTile[]
+}
+
 /**
  * 3D ground under the observer: Esri World Imagery draped over real elevation
  * (AWS Terrarium DEM), so mountains, coasts and canyons rise in relief.
- * Brightness follows the Sun's altitude (dark at night) and dims in totality.
+ * Everything for the location is preloaded, then the whole ground is mounted at
+ * once — no tile-by-tile pop-in. Brightness follows the Sun's altitude (dark at
+ * night) and dims in totality.
  */
 export function GroundTiles() {
   const latDeg = useSurfaceStore((s) => s.latDeg)
@@ -187,26 +197,49 @@ export function GroundTiles() {
     ambient: new Color(),
   })
 
-  // Observer's ground elevation: the reference that sits at the eye's foot.
-  // (Keeps its previous value across a location change until the new tile
-  // resolves — the cancelled guard discards stale fetches.)
-  const [obsElevM, setObsElevM] = useState<number | null>(null)
+  // Preload imagery + elevation for every tile of every ring, plus the
+  // observer's ground elevation (the datum the relief is referenced to), then
+  // publish them together. Stale loads from a previous location are discarded
+  // and their textures freed.
+  const [bundle, setBundle] = useState<Bundle | null>(null)
   useEffect(() => {
     let cancelled = false
+
+    const specs = LAYERS.flatMap((l) =>
+      tileGrid(latDeg, lonDeg, l.imgZ, l.demZ, l.n).map((spec) => ({
+        spec,
+        seg: l.seg,
+        yOff: l.yOff,
+      })),
+    )
+
     const ot = observerTile(latDeg, lonDeg, 14)
-    loadHeightGrid(TERRAIN_URL(ot.z, ot.ty, ot.tx), 129).then((grid) => {
-      if (cancelled) return
-      setObsElevM(grid ? sampleHeight(grid, ot.fx, 1 - ot.fy) : 0)
+    const obsP = loadHeightGrid(TERRAIN_URL(ot.z, ot.ty, ot.tx)).then((g) =>
+      g ? sampleHeight(g, ot.fx, 1 - ot.fy) : 0,
+    )
+
+    const tileP = specs.map(async (s): Promise<ReadyTile | null> => {
+      const [texture, grid] = await Promise.all([
+        loadTexture(s.spec.url),
+        loadHeightGrid(s.spec.demUrl),
+      ])
+      if (!texture) return null // offline / 404: dark backdrop shows through
+      return { ...s, texture, grid }
     })
+
+    Promise.all([obsP, Promise.all(tileP)]).then(([obsElevM, loaded]) => {
+      const tiles = loaded.filter((t): t is ReadyTile => t !== null)
+      if (cancelled) {
+        tiles.forEach((t) => t.texture.dispose()) // unmount won't run; free here
+        return
+      }
+      setBundle({ obsElevM, tiles })
+    })
+
     return () => {
       cancelled = true
     }
   }, [latDeg, lonDeg])
-
-  const layers = useMemo(
-    () => LAYERS.map((l) => ({ ...l, tiles: tileGrid(latDeg, lonDeg, l.z, l.n) })),
-    [latDeg, lonDeg],
-  )
 
   useFrame(() => {
     const group = groupRef.current
@@ -246,22 +279,19 @@ export function GroundTiles() {
     })
   })
 
-  // Wait for the reference elevation so tiles displace against the right datum.
-  if (obsElevM === null) return null
+  if (!bundle) {
+    return (
+      <Html center zIndexRange={[20, 0]}>
+        <span className="surface-loading">Loading terrain…</span>
+      </Html>
+    )
+  }
 
   return (
     <group ref={groupRef}>
-      {layers.map((layer) =>
-        layer.tiles.map((spec) => (
-          <GroundTile
-            key={spec.key}
-            spec={spec}
-            yOff={layer.yOff}
-            seg={layer.seg}
-            obsElevM={obsElevM}
-          />
-        )),
-      )}
+      {bundle.tiles.map((tile) => (
+        <GroundTile key={tile.spec.key} {...tile} obsElevM={bundle.obsElevM} />
+      ))}
     </group>
   )
 }
