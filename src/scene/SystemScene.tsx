@@ -24,6 +24,7 @@ import { frame, updateFrame } from './frameState'
 import { OrbitLines } from './OrbitLines'
 import { ShadowCones } from './ShadowCones'
 import { Starfield } from './Starfield'
+import { TouchTimeScrub } from './TouchTimeScrub'
 
 /** Dev-only: exposes the three.js scene/gl for the headless debug scripts. */
 function DevExpose() {
@@ -90,8 +91,7 @@ function FlightRig() {
   })
 
   const prefersReducedMotion =
-    typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   // Snap camera distance when the scale mode changes (radii/distances jump).
   const scaleMode = useSettingsStore((s) => s.scaleMode)
@@ -106,7 +106,7 @@ function FlightRig() {
     camera.position.copy(dir.multiplyScalar(radius * 6))
     if (controls) {
       controls.target.set(0, 0, 0)
-       
+
       controls.minDistance = radius * 1.4
       controls.update()
     }
@@ -178,7 +178,7 @@ function FlightRig() {
       camera.position.sub(v.dest)
       if (controls) {
         controls.target.set(0, 0, 0)
-         
+
         controls.minDistance = destRadius * 1.4
         controls.update()
       }
@@ -229,6 +229,7 @@ export function SystemScene() {
       </Suspense>
       <OrbitLines />
       <OrbitControls makeDefault enableDamping dampingFactor={0.08} />
+      <TouchTimeScrub />
     </>
   )
 }

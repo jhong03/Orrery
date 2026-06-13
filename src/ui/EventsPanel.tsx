@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { BODY_CONSTANTS } from '../data/bodies'
 import { isShowerActive, METEOR_SHOWERS } from '../data/meteorShowers'
-import { COMET_IDS, SMALL_BODIES, elementsAt, type CometId } from '../data/smallBodies'
-import { nextEclipses, type EclipseEvent } from '../ephemeris/events'
+import { COMET_IDS, SMALL_BODIES, elementsAt } from '../data/smallBodies'
+import { nextEclipses } from '../ephemeris/events'
 import { keplerDistanceAu, nextPerihelionJd } from '../ephemeris/kepler'
 import { jdToDate } from '../ephemeris/time'
 import { useSelectionStore } from '../state/selectionStore'
@@ -12,30 +12,8 @@ import { useTimeStore } from '../state/timeStore'
 import { formatJdDate, formatJdTime } from '../utils/format'
 import { regionName } from '../utils/regions'
 
-type Tab = 'eclipses' | 'showers' | 'comets'
-
-/** Sets time to an event and presents it: sunlit side, slow playback. */
-function jumpToEclipse(e: EclipseEvent) {
-  const time = useTimeStore.getState()
-  time.setJd(e.peakJd)
-  time.setPlaying(true)
-  useTimeStore.setState({ speedIndex: 2, direction: 1 }) // 10 min/s
-  // Solar: watch the umbra spot crawl across Earth. Lunar: watch the Moon redden.
-  useSelectionStore.getState().focusBody(e.type === 'solar' ? 'earth' : 'moon')
-}
-
-function jumpToPerihelion(id: CometId, tp: number) {
-  const time = useTimeStore.getState()
-  time.setJd(tp - 20) // arrive shortly before peak activity
-  time.setPlaying(true)
-  useTimeStore.setState({ speedIndex: 5, direction: 1 }) // 1 day/s
-  useSelectionStore.getState().focusBody(id)
-}
-
-function eclipseTitle(e: EclipseEvent): string {
-  const kind = e.kind[0].toUpperCase() + e.kind.slice(1)
-  return e.type === 'solar' ? `${kind} solar eclipse` : `${kind} lunar eclipse`
-}
+import { eclipseTitle, jumpToEclipse, jumpToPerihelion } from './eventJumps'
+import { useEscapeToClose } from './useEscapeToClose'
 
 function EclipsesTab({ jd }: { jd: number }) {
   // Recompute only when the sim date moves by more than a day.
@@ -148,18 +126,22 @@ function useSimJd(): number {
 export function EventsPanel() {
   const open = useSettingsStore((s) => s.eventsPanelOpen)
   const setOpen = useSettingsStore((s) => s.setEventsPanelOpen)
-  const [tab, setTab] = useState<Tab>('eclipses')
+  const tab = useSettingsStore((s) => s.eventsTab)
+  const setTab = useSettingsStore((s) => s.setEventsTab)
   const jd = useSimJd()
+  useEscapeToClose(open, () => setOpen(false))
 
   if (!open) return null
 
   return (
     <aside className="events-panel" aria-label="Astronomical events">
       <header className="events-header">
-        <nav className="events-tabs">
+        <nav className="events-tabs" role="tablist" aria-label="Event categories">
           {(['eclipses', 'showers', 'comets'] as const).map((t) => (
             <button
               key={t}
+              role="tab"
+              aria-selected={tab === t}
               className={`events-tab${tab === t ? ' events-tab-active' : ''}`}
               onClick={() => setTab(t)}
             >

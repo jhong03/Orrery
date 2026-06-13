@@ -1,6 +1,6 @@
 import { Billboard } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   AdditiveBlending,
   BufferAttribute,
@@ -11,10 +11,12 @@ import {
   type ShaderMaterial,
 } from 'three'
 
+import { QUALITY } from '../../data/quality'
 import { SMALL_BODIES, elementsAt, type CometId } from '../../data/smallBodies'
 import { keplerPositionKm } from '../../ephemeris/kepler'
 import { KM_PER_AU, vecLength, type Vec3Km } from '../../ephemeris/types'
 import { useSelectionStore } from '../../state/selectionStore'
+import { useSettingsStore } from '../../state/settingsStore'
 import { toSceneRelative } from '../../utils/frame'
 import { mapHelioToView } from '../../utils/scale'
 import cometTailFrag from '../../shaders/cometTail.frag'
@@ -38,7 +40,6 @@ void main() {
   gl_FragColor = vec4(vec3(0.75, 0.85, 1.0) * a * 1.6, a);
 }
 `
-
 
 function tailGeometry(count: number, bias: number): BufferGeometry {
   const seeds = new Float32Array(count * 3)
@@ -77,8 +78,12 @@ export interface CometProps {
  * distance: invisible beyond ~4 au, dramatic near perihelion.
  */
 export function Comet({ id }: CometProps) {
-  const dustGeo = useMemo(() => tailGeometry(3600, 1.6), [])
-  const ionGeo = useMemo(() => tailGeometry(2400, 1.3), [])
+  const tailScale = useSettingsStore((s) => QUALITY[s.quality].tailParticleScale)
+  const dustGeo = useMemo(() => tailGeometry(Math.round(3600 * tailScale), 1.6), [tailScale])
+  const ionGeo = useMemo(() => tailGeometry(Math.round(2400 * tailScale), 1.3), [tailScale])
+  // Preset switches replace the geometries; free the old GPU buffers.
+  useEffect(() => () => dustGeo.dispose(), [dustGeo])
+  useEffect(() => () => ionGeo.dispose(), [ionGeo])
 
   const dustUniforms = useMemo(
     () => ({
@@ -162,7 +167,6 @@ export function Comet({ id }: CometProps) {
     const du = dustMat.current?.uniforms
     const cu = comaMat.current?.uniforms
     if (!iu || !du || !cu) return
-
     ;(iu.uNucleus.value as Vector3).copy(v.nucleus)
     ;(iu.uAxis.value as Vector3).copy(v.tip)
     ;(iu.uCurve.value as Vector3).set(0, 0, 0)

@@ -1,18 +1,65 @@
-# Orrery — session handoff (updated 2026-06-11, end of session)
+# Orrery — session handoff (updated 2026-06-13, end of session)
 
 Remote: **https://github.com/jhong03/Orrery.git** (branch `main`).
 After a fresh clone: `npm install`, then `node scripts/fetch-assets.mjs`
 (textures are gitignored; ~30 MB from Solar System Scope, see ASSETS.md),
 then `npm run dev`.
 
-The repo is **green**: `npx tsc -b`, `npm run lint`, `npm test` (43 tests),
+The repo is **green**: `npx tsc -b`, `npm run lint`, `npm test` (57 tests),
 `npm run build` all pass; `npm run dev` serves the app at localhost:5173.
-170 fps idle/scrub at last measure.
+170 fps idle/scrub at last measure. Bundle 1.35 MB (M6 code-split item).
 
-**Resume point: continue M5** (remaining: cmd-K fuzzy search, settings/
-quality presets Low-Ultra, onboarding coach marks, mobile gestures,
-full a11y pass). M0–M4 are done and verified; the HUD redesign below is
-the first slice of M5.
+**Resume point: M6 — ship it.** Perf pass vs budget, KTX2 + progressive
+textures (8K variants in public/textures/hi/ now used by the Ultra preset),
+code splitting, error boundaries, README screenshots, deploy preview.
+M0–M5 are all done and verified.
+
+## M5 — Product polish: DONE, verified 2026-06-13 (57 tests, 170 fps)
+
+- **Ctrl+K / "/" search palette** (ui/SearchPalette.tsx): fuzzy search over
+  all 21 bodies, next 6 eclipses (dated, region-named), comet perihelions,
+  meteor showers (deep-links the Events panel Showers tab via the new
+  settingsStore.eventsTab), and actions (now/overview/scale/toggles).
+  Scorer in utils/fuzzy.ts (subsequence + word-start/consecutive bonuses,
+  7 tests); amber match highlighting; full combobox/listbox ARIA; Search
+  button in the HUD jump group. Jump helpers shared with EventsPanel via
+  ui/eventJumps.ts.
+- **Quality presets Low/Medium/High/Ultra** (data/quality.ts, gear button →
+  popover above the HUD): pixel-ratio cap 1/1.5/2/3, belt instances
+  4k/10k/20k/32k (geometry built once at Ultra size, prefix drawn via
+  instanceCount), comet tail particle scale 0.35-1.5x (geometries rebuilt +
+  disposed), Ultra swaps in the 8K Earth-day/night/Jupiter/Saturn textures
+  (texturePath()). Persisted in localStorage 'orrery.quality'. NOTE: swapped
+  textures must be written through materialRef.current.uniforms (same R3F
+  cloning rule); Planet/Earth do this in a useEffect.
+- **Onboarding** (ui/Onboarding.tsx): 3 coach marks (welcome/time/search),
+  Skip/Next/Done, dots, localStorage 'orrery.onboarded', never reshown.
+- **Mobile** (scene/TouchTimeScrub.tsx): two-finger HORIZONTAL drag scrubs
+  time (1 yr per screen width, classified vs pinch by midpoint-travel vs
+  spread-change after an 18 px deadzone; OrbitControls disabled during the
+  scrub, playback restored after). One finger orbits, pinch zooms (stock
+  OrbitControls). Responsive CSS ≤720 px: full-width HUD with wrapped
+  control rows, panels become top sheets, 36 px touch targets on coarse
+  pointers. Verified with synthesized touch PointerEvents
+  (scripts/dev-mobile-check.mjs; releasePointerCapture errors there are a
+  synthetic-event artifact, filtered).
+- **A11y**: timeline slider has arrow-key scrubbing (1 d, Shift = 30 d) +
+  aria-valuenow/text; events tabs are role=tablist/tab with aria-selected;
+  Escape closes panels/popover via ui/useEscapeToClose.ts (inert while the
+  search palette is open — the palette stopPropagation()s its own Escape,
+  zustand closes are synchronous so the guard alone is not enough);
+  FlightRig already snapped instantly under prefers-reduced-motion; all
+  CSS animations gated by prefers-reduced-motion; scene labels were
+  already real <button>s.
+- **.prettierrc added** (semi:false, singleQuote, width 100) — the repo had
+  a format script but no config; `npx prettier --write src/**` is now safe.
+  The whole src/ tree is formatted with it.
+- Verification scripts: dev-search-check.mjs, dev-quality-check.mjs,
+  dev-onboarding-check.mjs, dev-mobile-check.mjs, dev-a11y-check.mjs (all
+  exit 0 with zero console errors). Screenshots in scripts/tour/
+  (search-*.png, quality-popover.png, onboarding-*.png, mobile-layout.png).
+- Committed 2026-06-13 in two commits: a formatting-only sweep
+  (.prettierrc + reformat) and the M5 feature commit.
 
 ## Interlude (user-requested, 2026-06-12): giant-planet rings + HUD redesign
 - **All four giant planets now have rings.** Jupiter (halo + main +

@@ -1,6 +1,6 @@
 import { useTexture } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import {
   Color,
   DataTexture,
@@ -12,8 +12,10 @@ import {
 } from 'three'
 
 import { PLANET_RENDER, type TexturedPlanetId } from '../../data/planetRender'
+import { texturePath } from '../../data/quality'
 import type { BodyId } from '../../ephemeris/types'
 import { useSelectionStore } from '../../state/selectionStore'
+import { useSettingsStore } from '../../state/settingsStore'
 import { kmToSceneUnits, toSceneRelative } from '../../utils/frame'
 import bodyVert from '../../shaders/body.vert'
 import planetFrag from '../../shaders/planet.frag'
@@ -42,9 +44,16 @@ export interface PlanetProps {
   children?: ReactNode
 }
 
-export function Planet({ id, ringShadow, eclipseOccluder, declutterAgainst, children }: PlanetProps) {
+export function Planet({
+  id,
+  ringShadow,
+  eclipseOccluder,
+  declutterAgainst,
+  children,
+}: PlanetProps) {
   const cfg = PLANET_RENDER[id]
-  const map = useTexture(cfg.texture, (t) => {
+  const quality = useSettingsStore((s) => s.quality)
+  const map = useTexture(texturePath(cfg.texture, quality), (t) => {
     t.colorSpace = SRGBColorSpace
     t.anisotropy = 8
   })
@@ -77,6 +86,11 @@ export function Planet({ id, ringShadow, eclipseOccluder, declutterAgainst, chil
   // object would never reach the GPU.
   const matRef = useRef<ShaderMaterial>(null)
 
+  // Quality switches swap the texture object; same ref rule applies.
+  useEffect(() => {
+    if (matRef.current) matRef.current.uniforms.uMap.value = map
+  }, [map])
+
   useFrame(() => {
     const u = matRef.current?.uniforms
     if (!u) return
@@ -95,7 +109,11 @@ export function Planet({ id, ringShadow, eclipseOccluder, declutterAgainst, chil
     if (ringShadow) {
       // World-space ring plane, straight from the per-frame view state.
       const { originBody } = useSelectionStore.getState()
-      toSceneRelative(frame.view[id].pos, frame.view[originBody].pos, u.uRingCenter.value as Vector3)
+      toSceneRelative(
+        frame.view[id].pos,
+        frame.view[originBody].pos,
+        u.uRingCenter.value as Vector3,
+      )
       const pole = frame.axes[id].zAxis
       ;(u.uRingNormal.value as Vector3).set(pole.x, pole.z, -pole.y).normalize()
       // Ring radii scale with the (possibly exaggerated) view radius so the

@@ -16,12 +16,9 @@ import {
 import type { BodyId, PlanetId, SmallBodyId } from '../ephemeris/types'
 import { useSelectionStore } from '../state/selectionStore'
 import { useTimeStore } from '../state/timeStore'
-import {
-  formatDistanceKm,
-  formatJdDate,
-  formatSpeedKmS,
-  formatTempRange,
-} from '../utils/format'
+import { formatDistanceKm, formatJdDate, formatSpeedKmS, formatTempRange } from '../utils/format'
+
+import { useEscapeToClose } from './useEscapeToClose'
 
 interface LiveValues {
   sunKm: number
@@ -73,9 +70,7 @@ function computeLive(id: BodyId, jd: number): LiveValues {
  * first paint for each body.
  */
 function useLiveValues(id: BodyId): LiveValues {
-  const [live, setLive] = useState<LiveValues>(() =>
-    computeLive(id, useTimeStore.getState().jd),
-  )
+  const [live, setLive] = useState<LiveValues>(() => computeLive(id, useTimeStore.getState().jd))
   useEffect(() => {
     const t = setInterval(() => {
       setLive(computeLive(id, useTimeStore.getState().jd))
@@ -98,6 +93,7 @@ export function InfoPanel() {
   const focusedBody = useSelectionStore((s) => s.focusedBody)
   const open = useSelectionStore((s) => s.infoPanelOpen)
   const closeInfoPanel = useSelectionStore((s) => s.closeInfoPanel)
+  useEscapeToClose(open, closeInfoPanel)
 
   if (!open) return null
   // Keyed by body so all state (incl. live values) resets per body.
@@ -146,7 +142,10 @@ function InfoPanelContent({ id, onClose }: { id: BodyId; onClose: () => void }) 
 
       <section className="info-section">
         <h3 className="info-section-title">Physical</h3>
-        <Row label="Mean radius" value={`${BODY_CONSTANTS[id].radiusKm.toLocaleString('en-US')} km`} />
+        <Row
+          label="Mean radius"
+          value={`${BODY_CONSTANTS[id].radiusKm.toLocaleString('en-US')} km`}
+        />
         <Row label="Mass" value={facts.mass} />
         <Row label="Gravity" value={`${facts.gravityMs2} m/s²`} />
         <Row label="Day length" value={facts.dayLength} />

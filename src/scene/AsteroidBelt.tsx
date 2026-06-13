@@ -1,5 +1,5 @@
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   Group,
   IcosahedronGeometry,
@@ -9,6 +9,7 @@ import {
   type ShaderMaterial,
 } from 'three'
 
+import { BELT_MAX_COUNT, QUALITY } from '../data/quality'
 import { J2000_JD } from '../ephemeris/time'
 import { KM_PER_AU, type Vec3Km } from '../ephemeris/types'
 import { useSelectionStore } from '../state/selectionStore'
@@ -19,7 +20,9 @@ import beltFrag from '../shaders/belt.frag'
 import beltVert from '../shaders/belt.vert'
 import { frame } from './frameState'
 
-const COUNT = 20_000
+// Buffers are sized for the Ultra preset; lower presets just draw a prefix
+// of the instances via `instanceCount`.
+const COUNT = BELT_MAX_COUNT
 const ZERO: Vec3Km = { x: 0, y: 0, z: 0 }
 
 /** Mulberry32: deterministic, so the belt is identical every load. */
@@ -133,13 +136,19 @@ function buildGeometry(): InstancedBufferGeometry {
 }
 
 /**
- * 20,000 instanced rocks between 2.1 and 3.3 au, each on its own correctly
- * paced Keplerian circle, evaluated per-vertex on the GPU. One draw call.
+ * Instanced rocks between 2.1 and 3.3 au (count set by the quality preset),
+ * each on its own correctly paced Keplerian circle, evaluated per-vertex on
+ * the GPU. One draw call.
  */
 export function AsteroidBelt() {
   const geometry = useMemo(() => buildGeometry(), [])
   const groupRef = useRef<Group>(null)
   const offset = useRef(new Vector3())
+
+  const quality = useSettingsStore((s) => s.quality)
+  useEffect(() => {
+    geometry.instanceCount = QUALITY[quality].beltCount
+  }, [geometry, quality])
 
   const uniforms = useMemo(
     () => ({

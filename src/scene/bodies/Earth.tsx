@@ -1,6 +1,6 @@
 import { useTexture } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import {
   AdditiveBlending,
   BackSide,
@@ -10,7 +10,9 @@ import {
   type ShaderMaterial,
 } from 'three'
 
+import { texturePath } from '../../data/quality'
 import { useSelectionStore } from '../../state/selectionStore'
+import { useSettingsStore } from '../../state/settingsStore'
 import { kmToSceneUnits, toSceneRelative } from '../../utils/frame'
 import atmosphereFrag from '../../shaders/atmosphere.frag'
 import bodyVert from '../../shaders/body.vert'
@@ -29,8 +31,13 @@ const CLOUD_DRIFT_PER_DAY = 1 / 24
  * with a sunset-orange terminator ring.
  */
 export function Earth() {
+  const quality = useSettingsStore((s) => s.quality)
   const [dayMap, nightMap, cloudMap] = useTexture(
-    ['/textures/earth_day.jpg', '/textures/earth_night.jpg', '/textures/earth_clouds.jpg'],
+    [
+      texturePath('/textures/earth_day.jpg', quality),
+      texturePath('/textures/earth_night.jpg', quality),
+      '/textures/earth_clouds.jpg',
+    ],
     (textures) => {
       for (const t of textures) {
         t.colorSpace = SRGBColorSpace
@@ -81,6 +88,15 @@ export function Earth() {
   const surfaceMat = useRef<ShaderMaterial>(null)
   const cloudMat = useRef<ShaderMaterial>(null)
   const atmoMat = useRef<ShaderMaterial>(null)
+
+  // Quality switches swap the day/night maps; write through the material
+  // ref (R3F clones the `uniforms` prop descriptors).
+  useEffect(() => {
+    const u = surfaceMat.current?.uniforms
+    if (!u) return
+    u.uDayMap.value = dayMap
+    u.uNightMap.value = nightMap
+  }, [dayMap, nightMap])
 
   useFrame(() => {
     // Write through material refs (R3F clones uniform descriptors, so
