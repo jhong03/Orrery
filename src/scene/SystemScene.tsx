@@ -21,20 +21,22 @@ import { Saturn } from './bodies/Saturn'
 import { Sun } from './bodies/Sun'
 import { Uranus } from './bodies/Uranus'
 import { frame, updateFrame } from './frameState'
+import { useSurfaceStore } from '../state/surfaceStore'
 import { OrbitLines } from './OrbitLines'
 import { ShadowCones } from './ShadowCones'
 import { Starfield } from './Starfield'
 import { TouchTimeScrub } from './TouchTimeScrub'
 
-/** Dev-only: exposes the three.js scene/gl for the headless debug scripts. */
+/** Dev-only: exposes the three.js scene/gl/camera for the headless debug scripts. */
 function DevExpose() {
   const scene = useThree((s) => s.scene)
   const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
   useEffect(() => {
     if (import.meta.env.DEV) {
-      Object.assign(window as object, { __scene: scene, __gl: gl })
+      Object.assign(window as object, { __scene: scene, __gl: gl, __camera: camera })
     }
-  }, [scene, gl])
+  }, [scene, gl, camera])
   return null
 }
 
@@ -191,12 +193,24 @@ function FlightRig() {
 }
 
 export function SystemScene() {
+  // In surface mode the clock and ephemeris keep running (the sky needs
+  // them) but everything orbital unmounts — including OrbitControls and
+  // the drei Html labels, which would otherwise stay in the DOM.
+  const surfaceActive = useSurfaceStore((s) => s.active)
   return (
     <>
       <color attach="background" args={['#02030a']} />
       <DevExpose />
       <TimeTicker />
       <EphemerisDriver />
+      {surfaceActive ? null : <OrbitContent />}
+    </>
+  )
+}
+
+function OrbitContent() {
+  return (
+    <>
       <FlightRig />
       <Suspense fallback={null}>
         <Starfield />

@@ -5,14 +5,139 @@ After a fresh clone: `npm install`, then `node scripts/fetch-assets.mjs`
 (textures are gitignored; ~30 MB from Solar System Scope, see ASSETS.md),
 then `npm run dev`.
 
-The repo is **green**: `npx tsc -b`, `npm run lint`, `npm test` (57 tests),
+The repo is **green**: `npx tsc -b`, `npm run lint`, `npm test` (61 tests),
 `npm run build` all pass; `npm run dev` serves the app at localhost:5173.
-170 fps idle/scrub at last measure. Bundle 1.35 MB (M6 code-split item).
+Renders at the display vsync cap (~75 Hz here) in both orbit and surface
+mode — GPU-comfortable, no bottleneck. Bundle 1.38 MB (M6 code-split item).
+The Surface feature + its follow-ups were committed 2026-06-13 (see git log).
 
 **Resume point: M6 — ship it.** Perf pass vs budget, KTX2 + progressive
 textures (8K variants in public/textures/hi/ now used by the Ultra preset),
 code splitting, error boundaries, README screenshots, deploy preview.
-M0–M5 are all done and verified.
+M0–M5 plus the Surface (ground-view) feature are all done and verified.
+
+## Surface mode — "stand on Earth and watch the sky": DONE, verified 2026-06-13
+
+User-requested ("like Google Earth … feel events from the ground: solar
+eclipses to auroras"). Chosen options: real map imagery, live NOAA aurora
+data, surface mode built before M6. Enter by double-clicking the globe, the
+InfoPanel "Stand on the surface" button, a city in Ctrl+K, or Events →
+"Watch from ground"; leave with Esc / "Leave surface" / Overview.
+
+- **state/surfaceStore.ts** — active/lat/lon/placeName + `lookAt` (BodyId |
+  'sun-az' | null) + `enterSeq`. `enter(lat, lon, {placeName, lookAt})`.
+- **ephemeris/topocentric.ts** (+topocentric.test.ts, 4 tests) — ENU basis at
+  a lat/lon in the ecliptic frame from Earth's IAU axes; observer helio
+  position (Earth centre + surface radial); ecl→ENU; az/alt; angular radius.
+  Tests pin Greenwich-noon Sun due south, Polaris alt≈lat, and the
+  2026-08-12 totality (Sun/Moon topocentric separation <0.1°, Moon disc
+  larger → total; Moon parallax ~1° vs geocentric).
+- **scene/surface/SurfaceScene.tsx** — reorients the EXISTING ecliptic-three
+  content (Starfield, IAU body quats, (x,z,-y) positions) into the observer's
+  ENU frame via one `celestialRef` group quaternion, so orbit conventions are
+  reused unchanged. Sun as a true-angular-size HDR disc (reddens near the
+  horizon); Moon at true topocentric position (parallax → real solar
+  eclipses on screen); planets as points (fade out in daylight). SystemScene
+  unmounts all orbit content (OrbitContent) when surfaceActive; clock +
+  EphemerisDriver keep running.
+- **SurfaceControls.tsx** — drag look (az/alt, grab-the-sky: drag up = look
+  down), wheel = FOV zoom; re-aims on each `enterSeq` toward lookAt (body =
+  centred + 14° telephoto so the 0.5° disc reads; 'sun-az' = sun bearing,
+  8–55° tilt, 55° FOV). Camera at origin, near 0.5 m.
+- **GroundTiles.tsx + tiles.ts + terrain.ts** — Esri World Imagery slippy
+  tiles draped over REAL 3D elevation: each tile is a subdivided plane
+  (z14 40-seg, z11 28-seg) displaced by the matching AWS Terrarium DEM tile
+  (keyless, CORS; height = R*256+G+B/256−32768 m), 1.5× vertical exaggeration,
+  referenced to the observer's own ground elevation (sampled from the z14 tile
+  under the eye) so their foot sits at −EYE_HEIGHT (40 m). Two LOD rings
+  (z14 5×5 + z11 7×7); brightness tracks Sun altitude and dims in totality;
+  flat fallback if a DEM tile is missing, dark backdrop disc (now at
+  BACKDROP_DEPTH 9 km, below the deepest relief so it never occludes canyon
+  floors) shows if imagery fails. Attribution in the HUD (required).
+  cities curated toward scenic viewpoints (Grand Canyon, Mt Fuji, Matterhorn,
+  Everest BC, Table Mountain, Mauna Kea, …) so the relief reads.
+  NOTE: terrain only — no 3D buildings (would need paid 3D-tile services).
+- **SkyDome.tsx** — analytic atmosphere: blue zenith→horizon gradient fading
+  in with Sun altitude, warm golden-hour glow peaking at the horizon, alpha→0
+  at night (stars show through), darkens via uOcclusion in totality.
+- **surfaceEvents.ts** — singleton solarOcclusion (this observer) +
+  lunarEclipse (from the Moon) via circle-overlap area; drives sky/ground
+  dimming, the corona and the blood-moon tint.
+- **Corona.tsx** — pearly halo that ramps in above 0.93 occlusion (the Moon
+  disc covers its centre → the iconic ring). **Moon.tsx** — copper emissive
+  blood-moon tint from lunarEclipse.
+- **Meteors.tsx** — streaks from the active shower's radiant (radiant RA/Dec
+  added to data/meteorShowers.ts), wall-clock-timed (sim-speed-independent),
+  gated on night + radiant up, rate ∝ ZHR.
+- **Aurora.tsx + spaceWeather.ts** — green/magenta curtain toward the
+  geomagnetic pole; FRAG uses layered value-noise/fbm (three curtain layers
+  drifting at different speeds + a travelling brightness envelope + flicker +
+  ragged noise tops) so the motion is organic and non-repeating. Visibility
+  from live NOAA planetary Kp (cached, fail-safe to a climatological Kp≈3,
+  applied only within ~12 h of real now) × geomagnetic-latitude-vs-oval ×
+  night. Arc cylinder centres on +Z, so Y-rotation = π − pole-bearing. NOTE:
+  live Kp only describes the present; historical/future dates use the baseline.
+- **UI**: ui/SurfaceHud.tsx (location chip + Leave + Esc + attribution),
+  InfoPanel "Stand on the surface" (Earth only), SearchPalette cities
+  (data/cities.ts, 20 cities, badge 'place') + "Stand on Earth's surface"
+  action, EventsPanel eclipse rows gain "Watch from ground"
+  (eventJumps.watchEclipseFromGround: solar → greatest-eclipse centreline
+  looking at Sun; lunar → sub-lunar point looking at Moon, via subBodyPoint).
+- **Gotchas**: surface scene units are KM, observer eye at the origin; the
+  celestial group quaternion is the linchpin (reuses orbit conventions);
+  body-targeted entries need telephoto FOV or the 0.5° disc is a 4 px dot;
+  aurora cylinder arc centres on +Z, so Y-rotation = π − bearing.
+- **Verify scripts** (all exit 0, zero console errors): dev-surface-check,
+  dev-ground-check, dev-sky-check, dev-eclipse-ground-check,
+  dev-meteors-check, dev-aurora-check, dev-terrain-check, dev-integration-check.
+  Screenshots in scripts/tour/ (eclipse-totality = corona money shot,
+  eclipse-bloodmoon, aurora-arctic, sky-noon/sunset/night, terrain-canyon,
+  terrain-fuji, integration-watch).
+- **Follow-up polish (user-requested, 2026-06-13):**
+  - Aurora given layered non-repeating motion (fbm curtains).
+  - Ground made truly 3D via DEM displacement (above).
+  - **Terrain quality pass**: three LOD rings z15/z14/z11 (DEM tops out at
+    z15 — do NOT request higher or the elevation tiles 404), anisotropy 16,
+    and — the big one — the ground is now **lit** by the real Sun direction
+    (custom GROUND_VERT/FRAG in GroundTiles.tsx with world normals + logdepth
+    chunks): hill-shading makes slopes catch light/shadow so relief reads as
+    real 3D. uSunColor (reddens near horizon, 0 at night, dimmed in totality)
+    + sky uAmbient drive day/night/eclipse, replacing the old flat brightness
+    scalar. Still vsync-capped fps with 75 tiles.
+  - **Reverse geocoding** (scene/surface/geocode.ts, BigDataCloud client API,
+    keyless/CORS/cached/fail-safe): the surface HUD shows the resolved
+    "City, Country" (or "Open ocean") + the precise lat/lon coordinate.
+  - **Special locations** (data/landmarks.ts): 15 geographic/astronomical
+    extremes in Ctrl+K (Vatican = smallest country, North Cape = midnight sun,
+    N/S Poles, Equator, Null Island, Everest summit, Dead Sea, Point Nemo,
+    Oymyakon, Death Valley, Sahara, Easter Island, Angel Falls). Each carries
+    a `note` blurb surfaced both as the search subtitle and an amber pill in
+    the surface HUD (surfaceStore.note / EnterOptions.note). Many pay off with
+    the time machine — North Cape on 2026-06-21 22:00 UTC shows the Sun at
+    +4.6° (never sets). NOTE: Web-Mercator imagery caps at ±85° lat, so the
+    exact poles render sky+sun over the dark backdrop (no ground tiles) — the
+    sky behaviour is the point there.
+    Verified scripts: dev-terrain-check, dev-geocode-check, dev-landmarks-check.
+    Screenshots terrain-canyon (hill-shaded walls), terrain-rio,
+    landmark-midnight-sun.
+- **Earth cloud-smear bug fix (user-reported, 2026-06-13):** after fast-
+  forwarding, the Earth's clouds smeared into concentric latitude bands. Root
+  cause: the cloud map is sampled at `vUv.x + uCloudShift` (drift up to ~1.7
+  in u), but the texture's default `wrapS` is ClampToEdge — past u=1 it clamps
+  the edge column and smears it across the globe, worsening as the drift
+  accumulates. Fix: `cloudMap.wrapS = RepeatWrapping` (set on all three Earth
+  maps in Earth.tsx; correct for equirectangular longitude wrap, also removes
+  the antimeridian seam). Also that session: the ocean sun-glint was blowing
+  past the bloom threshold into a ringed white blob — now normalised off the
+  sun's auto-exposure and held at ~0.7 (earth.frag), and earth.frag uses an
+  analytic sphere normal (vCenterW from body.vert) so the tight glint can't
+  alias on the mesh facets. Anisotropy bumped 8→16.
+- **InfoPanel stand/leave toggle (user-reported, 2026-06-13):** the Earth
+  panel's "Stand on the surface" button now flips to "Leave the surface" while
+  on the ground (StandToggle subscribes to surfaceStore.active), matching the
+  surface HUD's leave control.
+- **Committed 2026-06-13** — the whole Surface feature and all the follow-ups
+  above are in git (see `git log`).
 
 ## M5 — Product polish: DONE, verified 2026-06-13 (57 tests, 170 fps)
 

@@ -25,6 +25,11 @@ const STEPS: Step[] = [
     body: 'Press Ctrl+K (or /) to search planets, moons, comets and upcoming eclipses. "Events" lists what is worth jumping to.',
     place: 'hud-left',
   },
+  {
+    title: 'Stand on Earth',
+    body: 'Double-click the globe — or search a city — to stand on the surface and watch the real sky: sunrise, the stars, eclipses overhead and the aurora. "Events → Watch from ground" drops you in the right spot.',
+    place: 'center',
+  },
 ]
 
 function seen(): boolean {
@@ -56,7 +61,11 @@ export function Onboarding() {
   const s = STEPS[step]
 
   return (
-    <div className={`coach coach-${s.place}`} role="dialog" aria-label={`Tip ${step + 1} of 3`}>
+    <div
+      className={`coach coach-${s.place}`}
+      role="dialog"
+      aria-label={`Tip ${step + 1} of ${STEPS.length}`}
+    >
       <div className="coach-title">{s.title}</div>
       <p className="coach-body">{s.body}</p>
       <div className="coach-footer">

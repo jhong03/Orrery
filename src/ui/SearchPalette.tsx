@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 
 import { BODY_CONSTANTS } from '../data/bodies'
+import { CITIES } from '../data/cities'
 import { BODY_FACTS } from '../data/facts'
+import { LANDMARKS } from '../data/landmarks'
 import { METEOR_SHOWERS } from '../data/meteorShowers'
 import { COMET_IDS, SMALL_BODIES, elementsAt } from '../data/smallBodies'
 import { nextEclipses } from '../ephemeris/events'
@@ -9,6 +11,7 @@ import { nextPerihelionJd } from '../ephemeris/kepler'
 import { BODY_IDS } from '../ephemeris/types'
 import { useSelectionStore } from '../state/selectionStore'
 import { useSettingsStore } from '../state/settingsStore'
+import { useSurfaceStore } from '../state/surfaceStore'
 import { useTimeStore } from '../state/timeStore'
 import { formatJdDate } from '../utils/format'
 import { fuzzyMatch } from '../utils/fuzzy'
@@ -20,7 +23,7 @@ interface PaletteItem {
   key: string
   title: string
   subtitle: string
-  badge: 'body' | 'event' | 'shower' | 'action'
+  badge: 'body' | 'event' | 'shower' | 'action' | 'place'
   /** Extra search text matched after the title (id, aliases, category). */
   keywords: string
   run: () => void
@@ -90,6 +93,14 @@ function buildItems(jd: number): PaletteItem[] {
     ['Jump to now', 'Return the simulation to the present', () => useTimeStore.getState().setNow()],
     ['System overview', 'Zoom out to the whole solar system', frameSystem],
     [
+      "Stand on Earth's surface",
+      'Ground view of the sky from your last location',
+      () => {
+        const s = useSurfaceStore.getState()
+        s.enter(s.latDeg, s.lonDeg, { placeName: s.placeName ?? undefined })
+      },
+    ],
+    [
       'Open events panel',
       'Eclipses, meteor showers and comets',
       () => settings.setEventsPanelOpen(true),
@@ -115,6 +126,38 @@ function buildItems(jd: number): PaletteItem[] {
       badge: 'action',
       keywords: 'setting',
       run,
+    })
+  }
+
+  // Special places: geographic and astronomical extremes (with a blurb).
+  for (const l of LANDMARKS) {
+    items.push({
+      key: `landmark-${l.name}`,
+      title: l.name,
+      subtitle: l.note,
+      badge: 'place',
+      keywords: `landmark extreme special record ${l.note}`,
+      run: () =>
+        useSurfaceStore.getState().enter(l.latDeg, l.lonDeg, {
+          placeName: l.name,
+          note: l.note,
+          lookAt: 'sun-az',
+        }),
+    })
+  }
+
+  // Cities: stand on the ground at this location and look at the sky.
+  for (const c of CITIES) {
+    items.push({
+      key: `city-${c.name}`,
+      title: c.name,
+      subtitle: `Stand here · ${c.region}`,
+      badge: 'place',
+      keywords: `city location ground surface ${c.region}`,
+      run: () =>
+        useSurfaceStore
+          .getState()
+          .enter(c.latDeg, c.lonDeg, { placeName: c.name, lookAt: 'sun-az' }),
     })
   }
 

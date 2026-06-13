@@ -5,6 +5,8 @@ import {
   AdditiveBlending,
   BackSide,
   Color,
+  MathUtils,
+  RepeatWrapping,
   SRGBColorSpace,
   Vector3,
   type ShaderMaterial,
@@ -13,6 +15,7 @@ import {
 import { texturePath } from '../../data/quality'
 import { useSelectionStore } from '../../state/selectionStore'
 import { useSettingsStore } from '../../state/settingsStore'
+import { useSurfaceStore } from '../../state/surfaceStore'
 import { kmToSceneUnits, toSceneRelative } from '../../utils/frame'
 import atmosphereFrag from '../../shaders/atmosphere.frag'
 import bodyVert from '../../shaders/body.vert'
@@ -41,7 +44,12 @@ export function Earth() {
     (textures) => {
       for (const t of textures) {
         t.colorSpace = SRGBColorSpace
-        t.anisotropy = 8
+        t.anisotropy = 16
+        // Equirectangular maps wrap in longitude. The cloud layer samples at
+        // vUv.x + uCloudShift (up to ~1.7), so without RepeatWrapping the
+        // shift past u=1 clamps to the edge column and smears it into bands
+        // across the globe — worse the further the clouds have drifted.
+        t.wrapS = RepeatWrapping
       }
     },
   )
@@ -127,7 +135,17 @@ export function Earth() {
 
   return (
     <BodyAnchor id="earth">
-      <mesh>
+      <mesh
+        onDoubleClick={(e) => {
+          e.stopPropagation()
+          // Hit point -> mesh-local unit vector -> geographic lat/lon.
+          // Local texture convention: +X = lon 0, +Y = north, -Z = 90 E.
+          const p = e.object.worldToLocal(e.point.clone()).normalize()
+          const latDeg = (Math.asin(MathUtils.clamp(p.y, -1, 1)) * 180) / Math.PI
+          const lonDeg = (Math.atan2(-p.z, p.x) * 180) / Math.PI
+          useSurfaceStore.getState().enter(latDeg, lonDeg)
+        }}
+      >
         <sphereGeometry args={[1, 96, 48]} />
         <shaderMaterial
           ref={surfaceMat}

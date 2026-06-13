@@ -17,6 +17,9 @@ export interface MeteorShower {
   parentName: string
   /** Set when the parent body exists in the simulation (focusable). */
   parentBody?: BodyId
+  /** Radiant position (J2000), degrees: where the meteors appear to stream from. */
+  radiantRaDeg: number
+  radiantDecDeg: number
 }
 
 export const METEOR_SHOWERS: MeteorShower[] = [
@@ -27,6 +30,8 @@ export const METEOR_SHOWERS: MeteorShower[] = [
     peak: [1, 3],
     zhr: 110,
     parentName: 'Asteroid 2003 EH1',
+    radiantRaDeg: 230,
+    radiantDecDeg: 49,
   },
   {
     name: 'Lyrids',
@@ -35,6 +40,8 @@ export const METEOR_SHOWERS: MeteorShower[] = [
     peak: [4, 22],
     zhr: 18,
     parentName: 'Comet C/1861 G1 (Thatcher)',
+    radiantRaDeg: 271,
+    radiantDecDeg: 34,
   },
   {
     name: 'Eta Aquariids',
@@ -44,6 +51,8 @@ export const METEOR_SHOWERS: MeteorShower[] = [
     zhr: 50,
     parentName: '1P/Halley',
     parentBody: 'halley',
+    radiantRaDeg: 338,
+    radiantDecDeg: -1,
   },
   {
     name: 'Perseids',
@@ -52,6 +61,8 @@ export const METEOR_SHOWERS: MeteorShower[] = [
     peak: [8, 12],
     zhr: 100,
     parentName: 'Comet 109P/Swift–Tuttle',
+    radiantRaDeg: 48,
+    radiantDecDeg: 58,
   },
   {
     name: 'Orionids',
@@ -61,6 +72,8 @@ export const METEOR_SHOWERS: MeteorShower[] = [
     zhr: 20,
     parentName: '1P/Halley',
     parentBody: 'halley',
+    radiantRaDeg: 95,
+    radiantDecDeg: 16,
   },
   {
     name: 'Leonids',
@@ -69,6 +82,8 @@ export const METEOR_SHOWERS: MeteorShower[] = [
     peak: [11, 17],
     zhr: 15,
     parentName: 'Comet 55P/Tempel–Tuttle',
+    radiantRaDeg: 152,
+    radiantDecDeg: 22,
   },
   {
     name: 'Geminids',
@@ -77,6 +92,8 @@ export const METEOR_SHOWERS: MeteorShower[] = [
     peak: [12, 14],
     zhr: 150,
     parentName: 'Asteroid 3200 Phaethon',
+    radiantRaDeg: 112,
+    radiantDecDeg: 33,
   },
   {
     name: 'Ursids',
@@ -85,6 +102,8 @@ export const METEOR_SHOWERS: MeteorShower[] = [
     peak: [12, 22],
     zhr: 10,
     parentName: 'Comet 8P/Tuttle',
+    radiantRaDeg: 217,
+    radiantDecDeg: 76,
   },
 ]
 

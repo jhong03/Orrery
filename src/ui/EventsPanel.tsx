@@ -12,7 +12,7 @@ import { useTimeStore } from '../state/timeStore'
 import { formatJdDate, formatJdTime } from '../utils/format'
 import { regionName } from '../utils/regions'
 
-import { eclipseTitle, jumpToEclipse, jumpToPerihelion } from './eventJumps'
+import { eclipseTitle, jumpToEclipse, jumpToPerihelion, watchEclipseFromGround } from './eventJumps'
 import { useEscapeToClose } from './useEscapeToClose'
 
 function EclipsesTab({ jd }: { jd: number }) {
@@ -36,9 +36,18 @@ function EclipsesTab({ jd }: { jd: number }) {
                 : `Moon ${Math.round(e.obscuration * 100)}% inside the umbra`}
             </span>
           </div>
-          <button className="hud-btn event-jump" onClick={() => jumpToEclipse(e)}>
-            Jump to peak
-          </button>
+          <div className="event-actions">
+            <button className="hud-btn event-jump" onClick={() => jumpToEclipse(e)}>
+              Jump to peak
+            </button>
+            <button
+              className="hud-btn event-jump event-ground"
+              onClick={() => watchEclipseFromGround(e)}
+              title="Stand on Earth and watch it happen overhead"
+            >
+              Watch from ground
+            </button>
+          </div>
         </li>
       ))}
     </ul>

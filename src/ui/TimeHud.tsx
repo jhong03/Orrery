@@ -9,6 +9,7 @@ import {
 import { QUALITY, QUALITY_PRESETS } from '../data/quality'
 import { useSelectionStore } from '../state/selectionStore'
 import { useSettingsStore } from '../state/settingsStore'
+import { useSurfaceStore } from '../state/surfaceStore'
 import { currentSpeed, useTimeStore } from '../state/timeStore'
 import { formatJdDate, formatJdTime, formatSpeed } from '../utils/format'
 import type { ScaleMode } from '../utils/scale'
@@ -278,7 +279,14 @@ export function TimeHud() {
             >
               Events
             </button>
-            <button className="hud-btn" onClick={frameSystem} title="Zoom out to the whole system">
+            <button
+              className="hud-btn"
+              onClick={() => {
+                useSurfaceStore.getState().exit() // overview implies orbit
+                frameSystem()
+              }}
+              title="Zoom out to the whole system"
+            >
               Overview
             </button>
           </Group>

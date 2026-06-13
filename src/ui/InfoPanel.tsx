@@ -15,6 +15,7 @@ import {
 } from '../ephemeris/types'
 import type { BodyId, PlanetId, SmallBodyId } from '../ephemeris/types'
 import { useSelectionStore } from '../state/selectionStore'
+import { useSurfaceStore } from '../state/surfaceStore'
 import { useTimeStore } from '../state/timeStore'
 import { formatDistanceKm, formatJdDate, formatSpeedKmS, formatTempRange } from '../utils/format'
 
@@ -100,6 +101,34 @@ export function InfoPanel() {
   return <InfoPanelContent key={focusedBody} id={focusedBody} onClose={closeInfoPanel} />
 }
 
+/** Toggles between standing on Earth's surface and returning to orbit. */
+function StandToggle() {
+  const active = useSurfaceStore((s) => s.active)
+  if (active) {
+    return (
+      <button
+        className="hud-btn info-stand"
+        onClick={() => useSurfaceStore.getState().exit()}
+        title="Back to orbit (Esc)"
+      >
+        Leave the surface
+      </button>
+    )
+  }
+  return (
+    <button
+      className="hud-btn info-stand"
+      onClick={() => {
+        const s = useSurfaceStore.getState()
+        s.enter(s.latDeg, s.lonDeg, { placeName: s.placeName ?? undefined })
+      }}
+      title="Or double-click anywhere on the globe to stand there"
+    >
+      Stand on the surface
+    </button>
+  )
+}
+
 function InfoPanelContent({ id, onClose }: { id: BodyId; onClose: () => void }) {
   const facts = BODY_FACTS[id]
   const live = useLiveValues(id)
@@ -115,6 +144,8 @@ function InfoPanelContent({ id, onClose }: { id: BodyId; onClose: () => void }) 
           ×
         </button>
       </header>
+
+      {id === 'earth' && <StandToggle />}
 
       <section className="info-section">
         <h3 className="info-section-title">Right now</h3>

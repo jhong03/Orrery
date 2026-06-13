@@ -17,6 +17,7 @@ uniform float uSunRadiusW; // Sun radius, world units
 
 varying vec3 vWorldPos;
 varying vec3 vNormalW;
+varying vec3 vCenterW;
 varying vec2 vUv;
 
 #include <common>
@@ -43,7 +44,9 @@ float sunOcclusion(vec3 p) {
 void main() {
   #include <logdepthbuf_fragment>
 
-  vec3 N = normalize(vNormalW);
+  // Analytic sphere normal (smooth at any tessellation): without it the tight
+  // ocean-glint specular aliases into latitude bands along the mesh segments.
+  vec3 N = normalize(vWorldPos - vCenterW);
   vec3 sunDir = normalize(uSunPos - vWorldPos);
   vec3 V = normalize(cameraPosition - vWorldPos);
   float mu = dot(N, sunDir);
@@ -72,11 +75,17 @@ void main() {
   surface *= 1.0 - 0.94 * ecl * ecl * (3.0 - 2.0 * ecl); // smoothstep-shaped
 
   // Ocean glint: day map's blue dominance stands in for a specular mask.
+  // Kept just below the bloom threshold so it reads as a sun sparkle rather
+  // than blowing out into a bloom blob (which the mipmap bloom would then
+  // ring into latitude bands across the globe).
   float ocean = clamp((dayCol.b - max(dayCol.r, dayCol.g)) * 4.0, 0.0, 1.0);
   ocean = max(ocean, smoothstep(0.0, 0.2, dayCol.b - dayCol.r) * 0.5);
   vec3 H = normalize(sunDir + V);
-  float glint = pow(clamp(dot(N, H), 0.0, 1.0), 140.0) * ocean * day;
-  surface += uSunColor * glint * 0.9;
+  float glint = pow(clamp(dot(N, H), 0.0, 1.0), 120.0) * ocean * day;
+  // Normalise out the sun's auto-exposure so the glint peak is stable, then
+  // hold it at a gentle level regardless of how bright uSunColor is.
+  vec3 sunHue = uSunColor / max(max(uSunColor.r, uSunColor.g), max(uSunColor.b, 1e-3));
+  surface += sunHue * glint * 0.7;
 
   // City lights on the night side, dimmed under cloud cover.
   float night = 1.0 - day;
