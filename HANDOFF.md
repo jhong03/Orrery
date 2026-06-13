@@ -12,7 +12,11 @@ Renders at the display vsync cap (~75 Hz here) in both orbit and surface
 mode — GPU-comfortable, no bottleneck. The Surface feature + its follow-ups
 were committed 2026-06-13 (see git log).
 
-**Resume point: M6 — ship it (IN PROGRESS).** Done so far:
+**M6 — ship it: essentially DONE. SHIPPED LIVE at
+https://jhong03.github.io/Orrery/** (verified end-to-end on the real URL:
+canvas mounts, HUD, all textures 200, zero console errors). Only an optional
+perf pass and the deferred KTX2 work remain — see "Remaining M6" below.
+Done so far:
 - **Code splitting + vendor chunking** (vite.config.ts manualChunks +
   App.tsx lazy): three/drei/postprocessing/react-dom in a stable `r3f`
   vendor chunk (~1.2 MB, irreducible 3D core, all first-paint), `astronomy`
@@ -60,8 +64,11 @@ were committed 2026-06-13 (see git log).
   NOT rewrite plain runtime '/textures/...' strings, so they'd 404 under
   /Orrery/) — every texture load routes through asset(). Verified: Pages build
   served via preview at /Orrery/ loads with canvas + all textures 200, zero
-  errors. ONE-TIME MANUAL STEP (repo owner): Settings → Pages → Source = GitHub
-  Actions, or the deploy job fails. Live URL: https://jhong03.github.io/Orrery/.
+  errors. Pages source is set to "GitHub Actions" (done) and the site is LIVE
+  at https://jhong03.github.io/Orrery/ — every push to main auto-deploys.
+  Textures are COMMITTED (SSS blocks CI IPs — serves HTML, not images — even
+  with browser headers; verified it's IP-based, not header-based), so the build
+  is self-contained with no fetch step.
 
 Remaining M6: KTX2/Basis textures (NOT done — needs an encoder toolchain
 [basisu/toktx] to produce .ktx2 + the basis_transcoder wasm in public/ and
