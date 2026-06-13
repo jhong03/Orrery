@@ -59,27 +59,17 @@ scene holds up from the whole solar system down to a hillside on Earth.
 ## Getting started
 
 ```bash
-# 1. Install dependencies
 npm install
-
-# 2. Fetch textures (REQUIRED — see note below)
-node scripts/fetch-assets.mjs
-
-# 3. Start the dev server
 npm run dev
 ```
 
 Then open the URL Vite prints (default <http://localhost:5173/>).
 
-> **⚠️ Don't skip step 2.** The planet/star textures live in `public/textures/`,
-> which is **git-ignored and not committed** (they're ~30 MB and treated as a
-> fetchable dependency, like `node_modules/`). A fresh clone won't have them, and
-> **without the textures the app renders a blank page** — the texture loader
-> throws and the 3D canvas fails to mount.
->
-> `fetch-assets.mjs` is idempotent: it skips files already present, so you only
-> pay the download once per machine and it's safe to re-run anytime. Source URLs
-> and licenses are listed in [ASSETS.md](ASSETS.md).
+The planet/star textures live in `public/textures/` and are **committed to the
+repo**, so a fresh clone is ready to run. (`node scripts/fetch-assets.mjs` can
+re-download them from source if they're ever missing or you want to refresh
+them; it's idempotent and skips files already present.) Source URLs and
+licenses are in [ASSETS.md](ASSETS.md).
 
 ## Controls
 
@@ -142,15 +132,13 @@ Vitest. GLSL shaders via `vite-plugin-glsl`.
 ## Deployment
 
 Deployed to **GitHub Pages** via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
-on every push to `main` it fetches the textures (cached), builds with the
-project-page base (`/Orrery/`), and publishes. One-time setup: in the repo's
-**Settings → Pages**, set **Source** to **GitHub Actions**.
+on every push to `main` it builds with the project-page base (`/Orrery/`) and
+publishes. One-time setup: in the repo's **Settings → Pages**, set **Source** to
+**GitHub Actions**.
 
 The app is a plain static SPA, so any static host works too (Vercel, Netlify,
-Cloudflare Pages). The only build-time requirement is that
-`node scripts/fetch-assets.mjs` runs **before** `npm run build`, since the
-textures aren't committed (see [ASSETS.md](ASSETS.md)). Runtime asset URLs go
-through `src/utils/asset.ts` so they resolve correctly under any base path.
+Cloudflare Pages) — just `npm run build` and serve `dist/`. Runtime asset URLs
+go through `src/utils/asset.ts` so they resolve correctly under any base path.
 
 ## Credits & licenses
 

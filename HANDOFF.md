@@ -1,9 +1,10 @@
 # Orrery — session handoff (updated 2026-06-13, end of session)
 
 Remote: **https://github.com/jhong03/Orrery.git** (branch `main`).
-After a fresh clone: `npm install`, then `node scripts/fetch-assets.mjs`
-(textures are gitignored; ~30 MB from Solar System Scope, see ASSETS.md),
-then `npm run dev`.
+After a fresh clone: `npm install`, then `npm run dev`. Textures (~20 MB) are
+now COMMITTED in public/textures/ (Solar System Scope blocks CI/datacenter IPs,
+so fetch-at-build was unreliable for deploys). `node scripts/fetch-assets.mjs`
+still re-downloads/refreshes them if missing (idempotent; see ASSETS.md).
 
 The repo is **green**: `npx tsc -b`, `npm run lint`, `npm test` (61 tests),
 `npm run build` all pass; `npm run dev` serves the app at localhost:5173.
@@ -50,7 +51,10 @@ were committed 2026-06-13 (see git log).
   features, controls, architecture, deploy, credits). docs/screenshots/*.png
   committed, captured by scripts/capture-readme-shots.mjs.
 - **GitHub Pages deploy**: .github/workflows/deploy.yml (push to main →
-  fetch-assets [cached] → build with GITHUB_PAGES=true → publish). vite.config
+  npm install → build with GITHUB_PAGES=true → publish; textures are committed
+  so no fetch step. CI uses `npm install` not `npm ci` — the Windows lockfile
+  omits Rolldown's Linux/wasm @emnapi optional deps, breaking ci's strict
+  sync). vite.config
   `base` = '/Orrery/' for the Pages build, '/' otherwise. utils/asset.ts
   prefixes runtime public-asset paths with import.meta.env.BASE_URL (Vite does
   NOT rewrite plain runtime '/textures/...' strings, so they'd 404 under

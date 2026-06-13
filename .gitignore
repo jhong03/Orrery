@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# NOTE: public/textures/ used to be ignored (fetched via scripts/fetch-assets.mjs),
+# but the textures are now committed — Solar System Scope blocks CI/datacenter
+# IPs, so a fetch-at-build step is unreliable for deploys.
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,9 +26,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Fetched assets (re-run: node scripts/fetch-assets.mjs - see ASSETS.md)
-public/textures/
 
 # Dev verification artifacts
 scripts/tour/

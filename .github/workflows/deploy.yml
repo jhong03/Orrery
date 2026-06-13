@@ -35,17 +35,8 @@ jobs:
       # honoring the lockfile's pins for everything else.
       - run: npm install --no-audit --no-fund
 
-      # Textures aren't committed (see ASSETS.md) — fetch them before building.
-      # Cached so we don't re-download ~30 MB unless the manifest changes.
-      - name: Cache textures
-        uses: actions/cache@v4
-        with:
-          path: public/textures
-          key: textures-${{ hashFiles('scripts/fetch-assets.mjs') }}
-
-      - name: Fetch textures
-        run: node scripts/fetch-assets.mjs
-
+      # Textures are committed to the repo (Solar System Scope blocks CI IPs,
+      # so fetching at build time is unreliable), so no fetch step is needed.
       - name: Build
         run: npm run build
         env:
