@@ -1,13 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useMemo, useRef } from 'react'
-import {
-  Color,
-  DataTexture,
-  RGBAFormat,
-  SRGBColorSpace,
-  Vector3,
-  type ShaderMaterial,
-} from 'three'
+import { Color, DataTexture, RGBAFormat, SRGBColorSpace, Vector3, type ShaderMaterial } from 'three'
 
 import { BODY_CONSTANTS } from '../../data/bodies'
 import type { BodyId } from '../../ephemeris/types'

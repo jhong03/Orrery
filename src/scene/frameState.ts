@@ -13,12 +13,7 @@ import {
   type BodyId,
   type SystemState,
 } from '../ephemeris/types'
-import {
-  computeViewState,
-  createViewState,
-  type ScaleMode,
-  type ViewState,
-} from '../utils/scale'
+import { computeViewState, createViewState, type ScaleMode, type ViewState } from '../utils/scale'
 
 export const TRUE_RADII_KM = Object.fromEntries(
   BODY_IDS.map((id) => [id, BODY_CONSTANTS[id].radiusKm]),

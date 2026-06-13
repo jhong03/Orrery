@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { SMALL_BODIES, elementsAt } from '../data/smallBodies'
-import {
-  keplerDistanceAu,
-  keplerPositionKm,
-  nextPerihelionJd,
-  solveKepler,
-} from './kepler'
+import { keplerDistanceAu, keplerPositionKm, nextPerihelionJd, solveKepler } from './kepler'
 import { dateToJd, jdToDate } from './time'
 import { KM_PER_AU, vecLength } from './types'
 

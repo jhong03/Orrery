@@ -73,7 +73,10 @@ export function geoMoonKm(jd: number, out: Vec3Km): Vec3Km {
  * Compute heliocentric states for the Sun, all eight planets and the Moon.
  * Pass a reused `out` (from createSystemState) to avoid per-frame allocation.
  */
-export function computeSystemState(jd: number, out: SystemState = createSystemState()): SystemState {
+export function computeSystemState(
+  jd: number,
+  out: SystemState = createSystemState(),
+): SystemState {
   const time = jdToAstroTime(jd)
 
   out.sun.x = 0

@@ -14,9 +14,7 @@ describe('merged eclipse timeline', () => {
     for (let i = 1; i < events.length; i++) {
       expect(events[i].peakJd).toBeGreaterThanOrEqual(events[i - 1].peakJd)
     }
-    const totalSolar = events.find(
-      (e) => e.type === 'solar' && e.kind === 'total',
-    )
+    const totalSolar = events.find((e) => e.type === 'solar' && e.kind === 'total')
     expect(totalSolar).toBeDefined()
     expect(jdToDate(totalSolar!.peakJd).toISOString().slice(0, 10)).toBe('2026-08-12')
     // Greatest eclipse occurs at high northern latitude near Iceland.

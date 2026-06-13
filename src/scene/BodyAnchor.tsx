@@ -23,12 +23,7 @@ export interface BodyAnchorProps {
  * position minus the floating origin, plus IAU orientation and view-radius
  * scale. Children render in unit-radius local space. Also owns the label.
  */
-export function BodyAnchor({
-  id,
-  declutterAgainst,
-  declutterPx = 36,
-  children,
-}: BodyAnchorProps) {
+export function BodyAnchor({ id, declutterAgainst, declutterPx = 36, children }: BodyAnchorProps) {
   const group = useRef<Group>(null)
   const showLabels = useSettingsStore((s) => s.showLabels)
   const focusBody = useSelectionStore((s) => s.focusBody)

@@ -47,10 +47,22 @@ export function axesToQuaternion(axes: BodyAxes, out: Quaternion): Quaternion {
   const { xAxis: x, yAxis: y, zAxis: z } = axes
   basisMatrix.set(
     // column 1: image of +X   column 2: image of +Y   column 3: image of +Z
-    x.x, z.x, -y.x, 0,
-    x.z, z.z, -y.z, 0,
-    -x.y, -z.y, y.y, 0,
-    0, 0, 0, 1,
+    x.x,
+    z.x,
+    -y.x,
+    0,
+    x.z,
+    z.z,
+    -y.z,
+    0,
+    -x.y,
+    -z.y,
+    y.y,
+    0,
+    0,
+    0,
+    0,
+    1,
   )
   return out.setFromRotationMatrix(basisMatrix)
 }

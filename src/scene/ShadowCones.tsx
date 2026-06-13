@@ -1,13 +1,6 @@
 import { useFrame } from '@react-three/fiber'
 import { useRef } from 'react'
-import {
-  CylinderGeometry,
-  Group,
-  Mesh,
-  MeshBasicMaterial,
-  Quaternion,
-  Vector3,
-} from 'three'
+import { CylinderGeometry, Group, Mesh, MeshBasicMaterial, Quaternion, Vector3 } from 'three'
 
 import { vecDistance, vecLength } from '../ephemeris/types'
 import { useSelectionStore } from '../state/selectionStore'

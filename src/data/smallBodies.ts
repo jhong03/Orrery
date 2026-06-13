@@ -63,7 +63,7 @@ export const SMALL_BODIES: Record<SmallBodyId, SmallBodySpec> = {
           i: 161.9822163471797,
           om: 59.37450332385821,
           w: 111.9996293817165,
-          tp: 2474034.19611750, // 2061-Jul-28
+          tp: 2474034.1961175, // 2061-Jul-28
           periodDays: 27557.14006087326,
         },
       },

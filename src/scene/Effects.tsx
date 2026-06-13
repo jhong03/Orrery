@@ -13,7 +13,12 @@ export function Effects() {
   const bloomIntensity = useSettingsStore((s) => s.bloomIntensity)
   return (
     <EffectComposer multisampling={4}>
-      <Bloom mipmapBlur intensity={bloomIntensity} luminanceThreshold={1.0} luminanceSmoothing={0.25} />
+      <Bloom
+        mipmapBlur
+        intensity={bloomIntensity}
+        luminanceThreshold={1.0}
+        luminanceSmoothing={0.25}
+      />
       <Vignette offset={0.22} darkness={0.5} />
       <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
     </EffectComposer>

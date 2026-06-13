@@ -51,7 +51,7 @@ const BOXES: RegionBox[] = [
 /** Approximate region for a latitude/longitude (degrees, east-positive). */
 export function regionName(latDeg: number, lonDeg: number): string {
   // Normalize longitude to [-180, 180].
-  const lon = ((lonDeg % 360) + 540) % 360 - 180
+  const lon = (((lonDeg % 360) + 540) % 360) - 180
   for (const b of BOXES) {
     if (latDeg >= b.latMin && latDeg <= b.latMax && lon >= b.lonMin && lon <= b.lonMax) {
       return b.name
