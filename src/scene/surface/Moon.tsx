@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { forwardRef, useRef } from 'react'
 import { Color, SRGBColorSpace, type Group, type MeshStandardMaterial } from 'three'
 
+import { asset } from '../../utils/asset'
 import { surfaceEvents } from './surfaceEvents'
 
 const MOON_RADIUS_KM = 1737.4
@@ -16,7 +17,7 @@ const COPPER = new Color(0.5, 0.12, 0.04)
  * atmosphere) all emerge from geometry + the shared event state.
  */
 export const Moon = forwardRef<Group>(function Moon(_props, ref) {
-  const map = useTexture('/textures/moon.jpg', (t) => {
+  const map = useTexture(asset('/textures/moon.jpg'), (t) => {
     t.colorSpace = SRGBColorSpace
     t.anisotropy = 8
   })

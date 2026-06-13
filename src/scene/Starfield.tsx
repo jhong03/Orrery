@@ -13,6 +13,7 @@ import { MakeTime, RotateVector, Rotation_EQJ_ECL, Vector } from 'astronomy-engi
 
 import { BRIGHT_STARS } from '../data/stars'
 import type { BodyAxes } from '../ephemeris/rotation'
+import { asset } from '../utils/asset'
 import { axesToQuaternion } from '../utils/frame'
 import starsFrag from '../shaders/stars.frag'
 import starsVert from '../shaders/stars.vert'
@@ -40,7 +41,7 @@ function eqjQuaternion(): Quaternion {
 }
 
 export function Starfield() {
-  const milkyWay = useTexture('/textures/stars_milky_way.jpg', (t) => {
+  const milkyWay = useTexture(asset('/textures/stars_milky_way.jpg'), (t) => {
     t.colorSpace = SRGBColorSpace
     t.anisotropy = 4
   })

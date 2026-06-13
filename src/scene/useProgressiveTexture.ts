@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { TextureLoader, type Texture } from 'three'
 
 import { hiResTexturePath, type QualityPreset } from '../data/quality'
+import { asset } from '../utils/asset'
 
 const loader = new TextureLoader()
 
@@ -22,7 +23,7 @@ export function useProgressiveTexture(
   configure: (t: Texture) => void,
 ): Texture {
   // Suspends only on the small working-tier map.
-  const baseTex = useTexture(base, configure)
+  const baseTex = useTexture(asset(base), configure)
   const hiPath = hiResTexturePath(base, quality)
   const [hi, setHi] = useState<{ path: string; tex: Texture } | null>(null)
 
@@ -30,7 +31,7 @@ export function useProgressiveTexture(
     if (!hiPath) return
     let cancelled = false
     let loaded: Texture | undefined
-    loader.load(hiPath, (t) => {
+    loader.load(asset(hiPath), (t) => {
       if (cancelled) return void t.dispose()
       configure(t)
       loaded = t

@@ -5,6 +5,10 @@ import glsl from 'vite-plugin-glsl'
 
 export default defineConfig({
   plugins: [react(), glsl()],
+  // GitHub *project* pages serve from /<repo>/, so the build needs that base.
+  // The deploy workflow sets GITHUB_PAGES=true; dev and root deploys stay at '/'.
+  // Runtime asset URLs go through utils/asset.ts (import.meta.env.BASE_URL).
+  base: process.env.GITHUB_PAGES === 'true' ? '/Orrery/' : '/',
   build: {
     // three.js core + drei + postprocessing (~1.2 MB) are all needed on the
     // first rendered frame, so the vendor chunk is irreducibly large for a 3D

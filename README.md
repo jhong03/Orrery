@@ -141,11 +141,16 @@ Vitest. GLSL shaders via `vite-plugin-glsl`.
 
 ## Deployment
 
-The app is a static SPA — any static host works (Vercel, Netlify, Cloudflare
-Pages, GitHub Pages). The only build-time requirement is that
-`node scripts/fetch-assets.mjs` runs **before** `npm run build` so the textures
-are present in `public/textures/` (they're not committed). See
-[ASSETS.md](ASSETS.md) for the asset manifest.
+Deployed to **GitHub Pages** via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml):
+on every push to `main` it fetches the textures (cached), builds with the
+project-page base (`/Orrery/`), and publishes. One-time setup: in the repo's
+**Settings → Pages**, set **Source** to **GitHub Actions**.
+
+The app is a plain static SPA, so any static host works too (Vercel, Netlify,
+Cloudflare Pages). The only build-time requirement is that
+`node scripts/fetch-assets.mjs` runs **before** `npm run build`, since the
+textures aren't committed (see [ASSETS.md](ASSETS.md)). Runtime asset URLs go
+through `src/utils/asset.ts` so they resolve correctly under any base path.
 
 ## Credits & licenses
 

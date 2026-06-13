@@ -16,6 +16,7 @@ import {
 import { useSelectionStore } from '../../state/selectionStore'
 import { useSettingsStore } from '../../state/settingsStore'
 import { useSurfaceStore } from '../../state/surfaceStore'
+import { asset } from '../../utils/asset'
 import { kmToSceneUnits, toSceneRelative } from '../../utils/frame'
 import atmosphereFrag from '../../shaders/atmosphere.frag'
 import bodyVert from '../../shaders/body.vert'
@@ -50,7 +51,7 @@ export function Earth() {
   // background on Ultra; clouds have no hi-res variant.
   const dayMap = useProgressiveTexture('/textures/earth_day.jpg', quality, configureEarthMap)
   const nightMap = useProgressiveTexture('/textures/earth_night.jpg', quality, configureEarthMap)
-  const cloudMap = useTexture('/textures/earth_clouds.jpg', configureEarthMap)
+  const cloudMap = useTexture(asset('/textures/earth_clouds.jpg'), configureEarthMap)
 
   const surfaceUniforms = useMemo(
     () => ({
