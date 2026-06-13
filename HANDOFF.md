@@ -8,12 +8,37 @@ then `npm run dev`.
 The repo is **green**: `npx tsc -b`, `npm run lint`, `npm test` (61 tests),
 `npm run build` all pass; `npm run dev` serves the app at localhost:5173.
 Renders at the display vsync cap (~75 Hz here) in both orbit and surface
-mode — GPU-comfortable, no bottleneck. Bundle 1.38 MB (M6 code-split item).
-The Surface feature + its follow-ups were committed 2026-06-13 (see git log).
+mode — GPU-comfortable, no bottleneck. The Surface feature + its follow-ups
+were committed 2026-06-13 (see git log).
 
-**Resume point: M6 — ship it.** Perf pass vs budget, KTX2 + progressive
-textures (8K variants in public/textures/hi/ now used by the Ultra preset),
-code splitting, error boundaries, README screenshots, deploy preview.
+**Resume point: M6 — ship it (IN PROGRESS).** Done so far:
+- **Code splitting + vendor chunking** (vite.config.ts manualChunks +
+  App.tsx lazy): three/drei/postprocessing/react-dom in a stable `r3f`
+  vendor chunk (~1.2 MB, irreducible 3D core, all first-paint), `astronomy`
+  (60 KB) separate, app `index` ~107 KB (was 128). The surface subtree
+  (SurfaceScene 20 KB + SurfaceHud + tiles) is lazy, loaded on "stand" and
+  warmed by a post-paint prefetch. chunkSizeWarningLimit 1300 (honest floor;
+  Rolldown co-bundles co-loaded vendor libs). LESSON: requestIdleCallback is
+  unreliable in an always-animating R3F app (rAF keeps the thread busy → use
+  its `timeout` option or setTimeout). LESSON: a cold `{cond && <Lazy/>}`
+  Suspense boundary with a null fallback does NOT retry on resolve until the
+  next state change — so EventsPanel stays eager; surface survives because
+  entry cascades re-renders. Verified by scripts/dev-prod-smoke.mjs (runs
+  against `vite preview`, exercises lazy chunks via real UI — note prod build
+  strips the window.__orrery dev hooks, so assert via DOM, not stores).
+- **Error boundaries** (ui/ErrorBoundary.tsx): top-level DOM boundary →
+  full-screen recover/reload card (AppCrash) for UI-panel + WebGL/Canvas-init
+  failures; an in-Canvas `scene` boundary (R3F errors propagate inside its own
+  reconciler, so the net must be INSIDE the Canvas) with a null fallback; and
+  a dedicated `surface-scene` boundary that recovers a failed surface chunk /
+  render by calling surfaceStore.exit() → drops back to orbit instead of
+  crashing (resetKeys=[surfaceActive] clears it on leave). Verified by
+  scripts/dev-errorboundary-check.mjs (happy path + chunk-abort recovery).
+
+Remaining M6: KTX2 + progressive textures (8K variants already in
+public/textures/hi/, used by the Ultra preset), perf pass vs budget, README
+screenshots, deploy preview. Optional polish: terrain horizon skirts,
+surface loading progress hint, WebGL context-loss recovery.
 M0–M5 plus the Surface (ground-view) feature are all done and verified.
 
 ## Surface mode — "stand on Earth and watch the sky": DONE, verified 2026-06-13

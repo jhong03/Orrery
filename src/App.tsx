@@ -4,6 +4,7 @@ import { lazy, Suspense, useEffect } from 'react'
 import { QUALITY } from './data/quality'
 import { Effects } from './scene/Effects'
 import { SystemScene } from './scene/SystemScene'
+import { AppCrash, ErrorBoundary } from './ui/ErrorBoundary'
 import { EventsPanel } from './ui/EventsPanel'
 import { InfoPanel } from './ui/InfoPanel'
 import { Onboarding } from './ui/Onboarding'
@@ -47,24 +48,44 @@ export default function App() {
   }, [])
 
   return (
-    <div className="app">
-      <Canvas
-        // `flat`: tone mapping happens in the postprocessing chain (ACES).
-        flat
-        gl={{ logarithmicDepthBuffer: true, antialias: true }}
-        camera={{ fov: 50, near: 0.1, far: 1e8, position: [1800, 1200, 4000] }}
-        dpr={[1, pixelRatioCap]}
-      >
-        <SystemScene />
-        <Suspense fallback={null}>{surfaceActive && <SurfaceScene />}</Suspense>
-        <Effects />
-      </Canvas>
-      <TimeHud />
-      <Suspense fallback={null}>{surfaceActive && <SurfaceHud />}</Suspense>
-      <InfoPanel />
-      <EventsPanel />
-      <SearchPalette />
-      <Onboarding />
-    </div>
+    // Top-level net: catches UI-panel render errors and a failed WebGL/Canvas
+    // init (which throw in the DOM tree) → full-screen recover/reload card.
+    <ErrorBoundary label="app" fallback={(reset) => <AppCrash reset={reset} />}>
+      <div className="app">
+        <Canvas
+          // `flat`: tone mapping happens in the postprocessing chain (ACES).
+          flat
+          gl={{ logarithmicDepthBuffer: true, antialias: true }}
+          camera={{ fov: 50, near: 0.1, far: 1e8, position: [1800, 1200, 4000] }}
+          dpr={[1, pixelRatioCap]}
+        >
+          {/* Scene errors propagate inside R3F's own reconciler, so the net for
+              them has to live inside the Canvas. Null fallback keeps the shell
+              + HUD alive (and logs) if the core scene ever throws. */}
+          <ErrorBoundary label="scene" fallback={null}>
+            <SystemScene />
+            {/* Surface is recoverable: a chunk-load failure or surface render
+                error drops back to orbit instead of taking down the scene. */}
+            <ErrorBoundary
+              label="surface-scene"
+              fallback={null}
+              onError={() => useSurfaceStore.getState().exit()}
+              resetKeys={[surfaceActive]}
+            >
+              <Suspense fallback={null}>{surfaceActive && <SurfaceScene />}</Suspense>
+            </ErrorBoundary>
+            <Effects />
+          </ErrorBoundary>
+        </Canvas>
+        <TimeHud />
+        <ErrorBoundary label="surface-hud" fallback={null} resetKeys={[surfaceActive]}>
+          <Suspense fallback={null}>{surfaceActive && <SurfaceHud />}</Suspense>
+        </ErrorBoundary>
+        <InfoPanel />
+        <EventsPanel />
+        <SearchPalette />
+        <Onboarding />
+      </div>
+    </ErrorBoundary>
   )
 }
