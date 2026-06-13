@@ -68,6 +68,11 @@ const HI_RES_TEXTURES: Record<string, string> = {
   '/textures/saturn.jpg': '/textures/hi/saturn_8k.jpg',
 }
 
-export function texturePath(base: string, quality: QualityPreset): string {
-  return QUALITY[quality].hiResTextures ? (HI_RES_TEXTURES[base] ?? base) : base
+/**
+ * The hi-res variant to upgrade to for this preset, or null when the working
+ * tier already suffices (no 8K variant, or the preset doesn't want hi-res).
+ * Used for progressive loading: show the 2K now, swap this in when it lands.
+ */
+export function hiResTexturePath(base: string, quality: QualityPreset): string | null {
+  return QUALITY[quality].hiResTextures ? (HI_RES_TEXTURES[base] ?? null) : null
 }

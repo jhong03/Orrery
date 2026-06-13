@@ -25,7 +25,8 @@ const FILES = [
   ['uranus.jpg', `${SSS}/2k_uranus.jpg`],
   ['neptune.jpg', `${SSS}/2k_neptune.jpg`],
   ['stars_milky_way.jpg', `${SSS}/8k_stars_milky_way.jpg`],
-  // High tier — swapped in progressively (wired up in M6).
+  // High tier — shown at the working tier first, then upgraded in the
+  // background on the Ultra preset (useProgressiveTexture).
   ['hi/earth_day_8k.jpg', `${SSS}/8k_earth_daymap.jpg`],
   ['hi/earth_night_8k.jpg', `${SSS}/8k_earth_nightmap.jpg`],
   ['hi/jupiter_8k.jpg', `${SSS}/8k_jupiter.jpg`],

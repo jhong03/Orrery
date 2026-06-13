@@ -1,4 +1,3 @@
-import { useTexture } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import {
@@ -12,7 +11,6 @@ import {
 } from 'three'
 
 import { PLANET_RENDER, type TexturedPlanetId } from '../../data/planetRender'
-import { texturePath } from '../../data/quality'
 import type { BodyId } from '../../ephemeris/types'
 import { useSelectionStore } from '../../state/selectionStore'
 import { useSettingsStore } from '../../state/settingsStore'
@@ -22,10 +20,17 @@ import planetFrag from '../../shaders/planet.frag'
 import { BodyAnchor } from '../BodyAnchor'
 import { frame, TRUE_RADII_KM } from '../frameState'
 import { updateSunColor, updateSunPosition } from '../sunLight'
+import { useProgressiveTexture } from '../useProgressiveTexture'
 
 /** Shared 1x1 transparent texture bound to the ring-shadow sampler when unused. */
 const NO_RING_TEX = new DataTexture(new Uint8Array([0, 0, 0, 0]), 1, 1, RGBAFormat)
 NO_RING_TEX.needsUpdate = true
+
+/** Stable map configurer (module scope — see useProgressiveTexture). */
+function configurePlanetMap(t: Texture) {
+  t.colorSpace = SRGBColorSpace
+  t.anisotropy = 8
+}
 
 export interface RingShadowConfig {
   map: Texture
@@ -53,10 +58,9 @@ export function Planet({
 }: PlanetProps) {
   const cfg = PLANET_RENDER[id]
   const quality = useSettingsStore((s) => s.quality)
-  const map = useTexture(texturePath(cfg.texture, quality), (t) => {
-    t.colorSpace = SRGBColorSpace
-    t.anisotropy = 8
-  })
+  // Working-tier map shows at once; the 8K variant (jupiter/saturn) upgrades in
+  // the background. Bodies without a hi-res variant just keep the base map.
+  const map = useProgressiveTexture(cfg.texture, quality, configurePlanetMap)
   const uniforms = useMemo(
     () => ({
       uMap: { value: map },

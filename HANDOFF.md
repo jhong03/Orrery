@@ -34,12 +34,26 @@ were committed 2026-06-13 (see git log).
   render by calling surfaceStore.exit() → drops back to orbit instead of
   crashing (resetKeys=[surfaceActive] clears it on leave). Verified by
   scripts/dev-errorboundary-check.mjs (happy path + chunk-abort recovery).
+- **Progressive textures** (scene/useProgressiveTexture.ts): the working-tier
+  (2K) map shows immediately and the 8K variant upgrades in the BACKGROUND on
+  the Ultra preset, instead of the old behaviour where Ultra blocked the whole
+  mesh behind Suspense until ~11 MB of 8K JPEGs downloaded. Earth (day/night)
+  and Planet (jupiter/saturn) route their maps through the hook; bodies with
+  no hi-res variant just keep the base map. `configure` must be a STABLE
+  (module-scope) fn — it's an effect dep, so an inline closure would reload the
+  8K every render (configureEarthMap keeps the wrapS=RepeatWrapping cloud-smear
+  fix). quality.ts: `texturePath` removed (dead), `hiResTexturePath` added.
+  Verified by scripts/dev-progressive-check.mjs (Earth day map 2048→8192,
+  never blank mid-swap, zero errors) + dev-quality-check still green.
 
-Remaining M6: KTX2 + progressive textures (8K variants already in
-public/textures/hi/, used by the Ultra preset), perf pass vs budget, README
-screenshots, deploy preview. Optional polish: terrain horizon skirts,
-surface loading progress hint, WebGL context-loss recovery.
-M0–M5 plus the Surface (ground-view) feature are all done and verified.
+Remaining M6: KTX2/Basis textures (NOT done — needs an encoder toolchain
+[basisu/toktx] to produce .ktx2 + the basis_transcoder wasm in public/ and
+drei's KTX2Loader; the encoder binary isn't available in this dev env, and
+textures are fetched separately/gitignored, so it must be a fetch-step add-on.
+Progressive loading above already covers the perceived-load win without it).
+Perf pass vs budget, README screenshots, deploy preview. Optional polish:
+terrain horizon skirts, surface loading progress hint, WebGL context-loss
+recovery. M0–M5 plus the Surface (ground-view) feature are all done & verified.
 
 ## Surface mode — "stand on Earth and watch the sky": DONE, verified 2026-06-13
 

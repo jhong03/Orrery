@@ -10,9 +10,9 @@ import {
   SRGBColorSpace,
   Vector3,
   type ShaderMaterial,
+  type Texture,
 } from 'three'
 
-import { texturePath } from '../../data/quality'
 import { useSelectionStore } from '../../state/selectionStore'
 import { useSettingsStore } from '../../state/settingsStore'
 import { useSurfaceStore } from '../../state/surfaceStore'
@@ -24,9 +24,20 @@ import earthFrag from '../../shaders/earth.frag'
 import { BodyAnchor } from '../BodyAnchor'
 import { frame } from '../frameState'
 import { updateSunColor, updateSunPosition } from '../sunLight'
+import { useProgressiveTexture } from '../useProgressiveTexture'
 
 /** Clouds drift one full revolution relative to the surface every ~24 days. */
 const CLOUD_DRIFT_PER_DAY = 1 / 24
+
+/** Stable map configurer (module scope — see useProgressiveTexture). */
+function configureEarthMap(t: Texture) {
+  t.colorSpace = SRGBColorSpace
+  t.anisotropy = 16
+  // Equirectangular maps wrap in longitude. The cloud layer samples at
+  // vUv.x + uCloudShift (up to ~1.7), so without RepeatWrapping the shift past
+  // u=1 clamps to the edge column and smears it into bands across the globe.
+  t.wrapS = RepeatWrapping
+}
 
 /**
  * Earth's full shader stack: day/night surface with ocean glint and projected
@@ -35,24 +46,11 @@ const CLOUD_DRIFT_PER_DAY = 1 / 24
  */
 export function Earth() {
   const quality = useSettingsStore((s) => s.quality)
-  const [dayMap, nightMap, cloudMap] = useTexture(
-    [
-      texturePath('/textures/earth_day.jpg', quality),
-      texturePath('/textures/earth_night.jpg', quality),
-      '/textures/earth_clouds.jpg',
-    ],
-    (textures) => {
-      for (const t of textures) {
-        t.colorSpace = SRGBColorSpace
-        t.anisotropy = 16
-        // Equirectangular maps wrap in longitude. The cloud layer samples at
-        // vUv.x + uCloudShift (up to ~1.7), so without RepeatWrapping the
-        // shift past u=1 clamps to the edge column and smears it into bands
-        // across the globe — worse the further the clouds have drifted.
-        t.wrapS = RepeatWrapping
-      }
-    },
-  )
+  // Day/night show at the working tier immediately and upgrade to 8K in the
+  // background on Ultra; clouds have no hi-res variant.
+  const dayMap = useProgressiveTexture('/textures/earth_day.jpg', quality, configureEarthMap)
+  const nightMap = useProgressiveTexture('/textures/earth_night.jpg', quality, configureEarthMap)
+  const cloudMap = useTexture('/textures/earth_clouds.jpg', configureEarthMap)
 
   const surfaceUniforms = useMemo(
     () => ({
