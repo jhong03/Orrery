@@ -1,4 +1,11 @@
-# Orrery — session handoff (updated 2026-06-13, end of session)
+# Orrery — session handoff (updated 2026-06-14, end of session)
+
+**Current state in one line:** shipped two ways — live web at
+https://jhong03.github.io/Orrery/ (auto-deploys on push to main) and a
+standalone Windows desktop app (Electron; `npm run electron:build`). Repo clean,
+all green. Next direction the user is weighing: publishing on Steam (see the
+desktop/Steam notes below). No open bugs; we'll reconvene if bugs/improvements
+come up.
 
 Remote: **https://github.com/jhong03/Orrery.git** (branch `main`).
 After a fresh clone: `npm install`, then `npm run dev`. Textures (~20 MB) are
@@ -85,14 +92,23 @@ Done so far:
   with browser headers; verified it's IP-based, not header-based), so the build
   is self-contained with no fetch step.
 
-Remaining M6: KTX2/Basis textures (NOT done — needs an encoder toolchain
-[basisu/toktx] to produce .ktx2 + the basis_transcoder wasm in public/ and
-drei's KTX2Loader; the encoder binary isn't available in this dev env, and
-textures are fetched separately/gitignored, so it must be a fetch-step add-on.
-Progressive loading already covers the perceived-load win without it). Perf
-pass vs budget (currently vsync-capped, headroom unmeasured). Optional polish:
-terrain horizon skirts, surface loading progress hint, WebGL context-loss
-recovery. M0–M5 plus the Surface (ground-view) feature are all done & verified.
+Remaining / next time (all OPTIONAL — nothing is blocking; the app is shipped):
+- **KTX2/Basis textures** — needs an encoder toolchain [basisu/toktx] to produce
+  .ktx2 + the basis_transcoder wasm + drei's KTX2Loader; the encoder isn't
+  available in this dev env. Textures are now COMMITTED, so KTX2 variants would
+  be generated and committed alongside. Progressive loading already covers the
+  perceived-load win without it.
+- **Perf pass vs budget** — currently vsync-capped, headroom unmeasured.
+- **Polish** — terrain horizon skirts, surface loading progress hint, WebGL
+  context-loss recovery.
+- **Steam path (if pursued):** resolve the two blockers above (Esri imagery
+  commercial licensing; surface mode's internet dependency), then the cosmetics:
+  app icon (build.win.icon), real appId/author/version, and Steamworks SDK
+  integration (steamworks.js for overlay/achievements/cloud saves) + the $100
+  Steam Direct fee.
+
+M0–M6 plus the Surface (ground-view) feature and the Electron desktop build are
+all done & verified.
 
 ## Surface mode — "stand on Earth and watch the sky": DONE, verified 2026-06-13
 
