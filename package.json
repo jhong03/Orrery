@@ -2,14 +2,45 @@
   "name": "orrery",
   "private": true,
   "version": "0.0.0",
+  "description": "A real-time 3D solar system simulator.",
+  "author": "jhong03",
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "node scripts/electron-dev.mjs",
+    "electron:pack": "cross-env ELECTRON=true vite build && electron-builder --dir",
+    "electron:build": "cross-env ELECTRON=true vite build && electron-builder"
+  },
+  "build": {
+    "appId": "com.jhong.orrery",
+    "productName": "Orrery",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "portable": {
+      "artifactName": "Orrery-${version}-portable.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "Orrery-Setup-${version}.exe"
+    }
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -28,6 +59,9 @@
     "@types/react-dom": "^19.2.3",
     "@types/three": "^0.184.1",
     "@vitejs/plugin-react": "^6.0.1",
+    "cross-env": "^10.1.0",
+    "electron": "^42.4.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^10.3.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",

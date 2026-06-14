@@ -140,6 +140,25 @@ The app is a plain static SPA, so any static host works too (Vercel, Netlify,
 Cloudflare Pages) — just `npm run build` and serve `dist/`. Runtime asset URLs
 go through `src/utils/asset.ts` so they resolve correctly under any base path.
 
+### Desktop build (Electron)
+
+Orrery can also run as a standalone desktop app (e.g. for distribution on Steam):
+
+| Command | What it does |
+| --- | --- |
+| `npm run electron:dev` | Run the app in an Electron window against the live dev server (HMR) |
+| `npm run electron:pack` | Build + package an **unpacked** app into `release/win-unpacked/` (fast; produces `Orrery.exe`) |
+| `npm run electron:build` | Produce a Windows **installer** (NSIS) in `release/` |
+
+The main process is [`electron/main.mjs`](electron/main.mjs); packaging is
+configured under the `build` field in `package.json`. The Electron build uses a
+relative asset base (`ELECTRON=true`) so the SPA loads from `file://`. Before
+publishing, set your own `appId`/`author` and add an app icon. **Note:** orbit
+mode is fully offline, but surface (ground-view) mode needs internet (map-tile,
+elevation, and space-weather services) — and the Esri/Maxar imagery it uses is
+**not** licensed for commercial redistribution, so resolve imagery licensing
+before selling.
+
 ## Credits & licenses
 
 - Planet, moon and star textures: **Solar System Scope** (CC BY 4.0). Full
