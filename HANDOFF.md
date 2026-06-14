@@ -16,6 +16,21 @@ were committed 2026-06-13 (see git log).
 https://jhong03.github.io/Orrery/** (verified end-to-end on the real URL:
 canvas mounts, HUD, all textures 200, zero console errors). Only an optional
 perf pass and the deferred KTX2 work remain — see "Remaining M6" below.
+
+**Desktop build (Electron) added — user is exploring publishing on Steam.**
+electron/main.mjs + scripts/electron-dev.mjs; vite base './' under ELECTRON=true
+(file:// load, reuses utils/asset.ts). Scripts: electron:dev (window on the live
+dev server), electron:pack (unpacked → release/win-unpacked/Orrery.exe),
+electron:build (portable single-exe + NSIS installer, ~115 MB, in release/,
+gitignored). devDeps electron/electron-builder/cross-env. Committed, user
+confirmed the portable exe runs. NOTE: the agent session can't open the GUI
+(non-interactive) — verify desktop renders by running the exe. STEAM BLOCKERS to
+resolve before selling: (1) Esri/Maxar surface imagery is NOT licensed for
+commercial redistribution; (2) surface mode needs live internet (tiles + NOAA +
+geocoding) while orbit mode is fully offline. WARNING: never run
+`@electron/asar extract-file <asar> package.json` from the repo root — it
+overwrites the project package.json (happened once, restored from memory).
+
 Done so far:
 - **Code splitting + vendor chunking** (vite.config.ts manualChunks +
   App.tsx lazy): three/drei/postprocessing/react-dom in a stable `r3f`
